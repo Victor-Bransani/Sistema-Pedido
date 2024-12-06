@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Sistema de Controle de Pedidos - Senac</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link 
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" 
+    rel="stylesheet">
+  <script src="https://unpkg.com/feather-icons"></script>
+</head>
+<body>
+  <div class="wrapper">
+    <!-- Sidebar de Navegação -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <img src="images/logo-senac.png" alt="Logo Senac" class="logo">
+      </div>
+      <nav class="nav-menu">
+        <ul>
+          <li class="nav-item active">
+            <button id="dashboard-btn" class="nav-btn" aria-label="Dashboard">
+              <i data-feather="bar-chart-2"></i>
+              <span>Dashboard</span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button id="buyer-btn" class="nav-btn" aria-label="Comprador">
+              <i data-feather="shopping-cart"></i>
+              <span>Comprador</span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button id="receiver-btn" class="nav-btn" aria-label="Recebimento">
+              <i data-feather="truck"></i>
+              <span>Recebimento</span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button id="finalized-btn" class="nav-btn" aria-label="Finalizados">
+              <i data-feather="clipboard"></i>
+              <span>Finalizados</span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button id="help-menu-btn" class="nav-btn" aria-label="Ajuda">
+              <i data-feather="help-circle"></i>
+              <span>Ajuda</span>
+            </button>
+          </li>
+        </ul>
+      </nav>
+    </aside>
+    
+    <!-- Conteúdo Principal -->
+    <div class="main-content">
+      <!-- Header -->
+      <header>
+        <h1>Sistema de Controle de Pedidos</h1>
+        <div class="user-profile">
+          <i data-feather="user"></i>
+          <span>Usuário</span>
+        </div>
+      </header>
+      
+      <!-- Main -->
+      <main>
+        <div class="sections-wrapper">
+          <!-- Seção Dashboard -->
+          <section id="dashboard-section" class="hidden-section">
+            <div class="section-header">
+              <h2>Visão Geral</h2>
+              <button id="dashboard-help-btn" class="icon-btn tooltip" aria-label="Ajuda Dashboard">
+                <i data-feather="help-circle"></i>
+                <span class="tooltiptext">Veja a visão geral dos pedidos.</span>
+              </button>
+            </div>
+            <div class="dashboard-content">
+              <!-- Contadores de Status -->
+              <div class="status-cards">
+                <div class="status-card status-pending-status">
+                  <h3 id="count-pending">0</h3>
+                  <p>
+                    <span class="status-icon"></span>Pendentes
+                  </p>
+                </div>
+                <div class="status-card status-completed-status">
+                  <h3 id="count-received">0</h3>
+                  <p>
+                    <span class="status-icon"></span>Recebidos
+                  </p>
+                </div>
+                <div class="status-card status-with_observations-status">
+                  <h3 id="count-with_observations">0</h3>
+                  <p>
+                    <span class="status-icon"></span>Com Observações
+                  </p>
+                </div>
+                <div class="status-card status-completed-status">
+                  <h3 id="count-completed">0</h3>
+                  <p>
+                    <span class="status-icon"></span>Concluídos
+                  </p>
+                </div>
+                <div class="status-card status-returned-status">
+                  <h3 id="count-returned">0</h3>
+                  <p>
+                    <span class="status-icon"></span>Devolvidos
+                  </p>
+                </div>
+              </div>
+              <!-- Área para gráficos -->
+              <div class="charts-area">
+                <canvas id="statusChart" width="400" height="200"></canvas>
+              </div>
+            </div>
+          </section>
+          
+          <!-- Seção de Comprador -->
+          <section id="buyer-section" class="hidden-section">
+            <div class="section-header">
+              <h2>Upload de Pedido em PDF</h2>
+              <button id="upload-help-btn" class="icon-btn tooltip" aria-label="Ajuda de Upload">
+                <i data-feather="help-circle"></i>
+                <span class="tooltiptext">Clique para ver instruções de upload.</span>
+              </button>
+            </div>
+            <div class="upload-section">
+              <div class="upload-wrapper">
+                <input type="file" id="pdf-upload" accept="application/pdf" aria-label="Selecionar arquivo PDF">
+                <button id="process-pdf" class="action-btn">
+                  <i data-feather="upload"></i> Processar PDF
+                </button>
+              </div>
+              <p class="info-text">
+                Selecione um arquivo PDF contendo o pedido de compra para processar.
+              </p>
+            </div>
+            <hr>
+            
+            <!-- Barra de pesquisa e filtro -->
+            <div class="search-filter-container">
+              <div class="search-wrapper">
+                <input type="text" id="buyer-search" class="search-input" placeholder="Pesquisar por número, fornecedor ou CNPJ" aria-label="Pesquisar pedidos">
+              </div>
+              <div class="filter-wrapper">
+                <label for="buyer-status-filter" class="filter-label">Filtrar:</label>
+                <select id="buyer-status-filter" class="order-status-select" aria-label="Filtrar por status">
+                  <option value="all">Todos os status</option>
+                  <option value="pending">Pendente</option>
+                  <option value="received">Recebido</option>
+                  <option value="with_observations">Com Observações</option>
+                  <option value="completed">Concluído</option>
+                  <option value="returned">Devolvido</option>
+                </select>
+              </div>
+            </div>
+    
+            <h3 class="section-title">Meus Pedidos</h3>
+            <div id="buyer-orders-container" class="order-container">
+              <!-- Exemplo de card com status -->
+              <div class="order-card">
+                <h3>Pedido #12345</h3>
+                <div class="order-details">
+                  <p><strong>Fornecedor:</strong> ACME Corp.</p>
+                  <p><strong>CNPJ:</strong> 00.000.000/0001-00</p>
+                  <!-- Linha de status alinhada com Flexbox -->
+                  <div class="status-line status-pending">
+                    <span class="status-label">Status:</span>
+                    <span class="status-icon"></span>
+                    <span class="status-text">Pendente</span>
+                  </div>
+                </div>
+                <div class="order-actions">
+                  <button class="action-btn"><i data-feather="eye"></i> Visualizar</button>
+                </div>
+              </div>
+              <!-- Adicione mais cards conforme necessário -->
+            </div>
+          </section>
+          
+          <!-- Seção de Recebimento -->
+          <section id="receiver-section" class="hidden-section">
+            <div class="section-header">
+              <h2>Pedidos Pendentes de Recebimento</h2>
+              <button id="receiver-help-btn" class="icon-btn tooltip" aria-label="Ajuda de Recebimento">
+                <i data-feather="help-circle"></i>
+                <span class="tooltiptext">Clique para ver instruções de recebimento.</span>
+              </button>
+            </div>
+            <div class="search-filter-container">
+              <div class="search-wrapper">
+                <input type="text" id="receiver-search" class="search-input" placeholder="Pesquisar por número, fornecedor, CNPJ ou descrição" aria-label="Pesquisar pedidos pendentes">
+              </div>
+              <div class="filter-wrapper">
+                <label for="receiver-pending-filter" class="filter-label">Mostrar:</label>
+                <select id="receiver-pending-filter" class="order-status-select" aria-label="Filtrar por status">
+                  <option value="all">Todos</option>
+                  <option value="pending">Pendentes</option>
+                  <option value="received">Recebidos</option>
+                  <option value="with_observations">Com Observações</option>
+                  <option value="completed">Concluídos</option>
+                  <option value="returned">Devolvidos</option>
+                </select>
+              </div>
+            </div>
+            <h3 class="section-title">Pedidos Pendentes</h3>
+            <div id="receiver-orders-container" class="order-container">
+              <!-- Exemplo de card com status -->
+              <div class="order-card">
+                <h3>Pedido #67890</h3>
+                <div class="order-details">
+                  <p><strong>Fornecedor:</strong> Beta Ltda.</p>
+                  <p><strong>CNPJ:</strong> 11.111.111/0001-11</p>
+                  <!-- Linha de status alinhada com Flexbox -->
+                  <div class="status-line status-received">
+                    <span class="status-label">Status:</span>
+                    <span class="status-icon"></span>
+                    <span class="status-text">Recebido</span>
+                  </div>
+                </div>
+                <div class="order-actions">
+                  <button class="action-btn"><i data-feather="check"></i> Confirmar Recebimento</button>
+                </div>
+              </div>
+              <!-- Adicione mais cards conforme necessário -->
+            </div>
+          </section>
+          
+          <!-- Seção de Pedidos Finalizados -->
+          <section id="finalized-section" class="hidden-section">
+            <div class="section-header">
+              <h2>Pedidos Finalizados</h2>
+              <button id="finalized-help-btn" class="icon-btn tooltip" aria-label="Ajuda de Finalizados">
+                <i data-feather="help-circle"></i>
+                <span class="tooltiptext">Clique para ver instruções sobre pedidos finalizados.</span>
+              </button>
+            </div>
+            <div class="search-filter-container">
+              <div class="search-wrapper">
+                <input type="text" id="finalized-search" class="search-input" placeholder="Pesquisar por número, fornecedor, CNPJ ou descrição" aria-label="Pesquisar pedidos finalizados">
+              </div>
+              <div class="filter-wrapper">
+                <label for="finalized-status-filter" class="filter-label">Filtrar:</label>
+                <select id="finalized-status-filter" class="order-status-select" aria-label="Filtrar por status">
+                  <option value="all">Todos</option>
+                  <option value="completed">Concluído</option>
+                  <option value="with_observations">Com Observações</option>
+                  <option value="returned">Devolvido</option>
+                </select>
+              </div>
+            </div>
+            <h3 class="section-title">Pedidos Finalizados</h3>
+            <div id="finalized-orders-container" class="order-container">
+              <!-- Exemplo de card com status -->
+              <div class="order-card">
+                <h3>Pedido #54321</h3>
+                <div class="order-details">
+                  <p><strong>Fornecedor:</strong> Gamma SA</p>
+                  <p><strong>CNPJ:</strong> 22.222.222/0001-22</p>
+                  <!-- Linha de status alinhada com Flexbox -->
+                  <div class="status-line status-completed">
+                    <span class="status-label">Status:</span>
+                    <span class="status-icon"></span>
+                    <span class="status-text">Concluído</span>
+                  </div>
+                </div>
+                <div class="order-actions">
+                  <button class="action-btn"><i data-feather="printer"></i> Imprimir</button>
+                </div>
+              </div>
+              <!-- Adicione mais cards conforme necessário -->
+            </div>
+          </section>
+        </div>
+      </main>
+      
+      <!-- Modal para Conferência de Pedido -->
+      <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-btn"><i data-feather="x"></i></span>
+            <h2>Conferência do Pedido</h2>
+            
+            <!-- Botões de ação no topo do modal -->
+            <div class="modal-actions">
+                <button id="print-order-btn" class="action-btn primary-action"><i data-feather="printer"></i> Imprimir Pedido</button>
+                <button id="save-conference-btn" class="action-btn primary-action"><i data-feather="save"></i> Salvar Conferência</button>
+            </div>
+            
+            <p><strong>Número do Pedido:</strong> <span id="modal-order-number"></span></p>
+            <p><strong>Fornecedor:</strong> <span id="modal-supplier-name"></span></p>
+            <p><strong>CNPJ:</strong> <span id="modal-supplier-cnpj"></span></p>
+            
+            <table id="modal-items-table">
+                <thead>
+                    <tr>
+                        <th>Linha</th>
+                        <th>Código</th>
+                        <th>Descrição</th>
+                        <th>Quantidade</th>
+                        <th>Unidade</th>
+                        <th>Preço Unitário</th>
+                        <th>Preço Total</th>
+                        <th>Recebido</th>
+                        <th>Qtd. Recebida</th>
+                        <th>Observação</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            
+            <div class="order-global-observation">
+                <label for="global-observation" class="tooltip"><strong>Observação do Pedido:</strong>
+                    <span class="tooltiptext">Adicione uma observação para todo o pedido se necessário.</span>
+                </label>
+                <textarea id="global-observation" rows="4" placeholder="Adicione uma observação para todo o pedido"></textarea>
+            </div>
+            
+            <div class="file-upload-section">
+                <h3>Upload de Arquivos</h3>
+                <div class="file-upload-wrapper">
+                    <label for="nf-upload" class="tooltip">Nota Fiscal:
+                        <span class="tooltiptext">Faça o upload da Nota Fiscal em PDF/JPG/PNG.</span>
+                    </label>
+                    <input type="file" id="nf-upload" accept="application/pdf, image/jpeg, image/png" aria-label="Upload de Nota Fiscal">
+                </div>
+                <div class="file-upload-wrapper">
+                    <label for="boleto-upload" class="tooltip">Boleto:
+                        <span class="tooltiptext">Faça o upload do Boleto em PDF/JPG/PNG.</span>
+                    </label>
+                    <input type="file" id="boleto-upload" accept="application/pdf, image/jpeg, image/png" aria-label="Upload de Boleto">
+                </div>
+            </div>
+        </div>
+      </div>
+      
+      <!-- Modal de Ajuda -->
+      <div id="help-modal" class="modal hidden">
+        <div class="modal-content">
+          <span class="close-btn"><i data-feather="x"></i></span>
+          <h2>Ajuda</h2>
+          <div id="help-content">
+            <p>Para usar o sistema, siga as instruções abaixo:</p>
+            <ul>
+              <li><strong>Dashboard:</strong> Veja a visão geral dos pedidos.</li>
+              <li><strong>Comprador:</strong> Faça upload do PDF do pedido, confira o status e conclua se necessário.</li>
+              <li><strong>Recebimento:</strong> Confira itens pendentes, marque como recebido e adicione observações, fazendo upload da Nota Fiscal e Boleto.</li>
+              <li><strong>Finalizados:</strong> Veja pedidos concluídos ou devolvidos.</li>
+            </ul>
+            <p>Em caso de dúvidas, entre em contato com o suporte.</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Contêiner de Notificações -->
+      <div id="notification-container"></div>
+      
+      <!-- Scripts -->
+      <script src="libs/pdfjs/pdf.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      <script src="js/app.js"></script>
+      <script>
+        feather.replace();
+      </script>
+    </div>
+  </div>
+</body>
+</html>
