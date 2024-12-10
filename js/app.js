@@ -58,6 +58,7 @@ function cleanDescription(description) {
         /\bCAM\b/i,
         /\bPEDIDO\b/i,
         /\bOBSERVAÇÃO\b/i,
+        /\bDE\s+OUTRAS\s+ESTRUTURAS\b/i // Remover partes específicas
     ];
     let cleaned = description;
     noisePatterns.forEach(pattern => {
@@ -99,57 +100,92 @@ function determineOrderStatus(order) {
 
 // Função para remover partes extras da descrição após identificação do item base
 function cleanExtraParts(description) {
+    if (!description || typeof description !== 'string') return '';
+    
     let desc = description;
-    let oldDesc;
 
-    do {
-        oldDesc = desc;
+    // Lista de padrões indesejados a serem removidos
+    const unwantedPatternsList = [
+        // Padrões específicos
+        /\b\d{1,3}(?:\.\d{3})*,\d{2}\b/g, // Padrão para valores monetários
+        /SEGUNDA COTAÇÃO E COMPRAMOS NUMA URGÊNCIA\.$/i,
+        /OS\s+ORÇAMENTOS\.\s+ANEXO\s+AS\s+JUSTIFICATICAS\s+DELE\./i,
+        /SP\s+-\s+SOLICITADO\s*:\s*[^.\n]+$/i,
+        /COMPRA DE ITENS APÓS AVALIAÇÃO DO DOCENTE DE VINHOS: GUSTAVO\. NO EMAIL ELE SOLICITA OS RÓTULOS QUE ESTÃO NESSA ORDEM DE COMPRA, APÓS APRESENTAÇÃO\s*/i,
+        /OBSERVAÇÃO.*$/i,
+        /\bSOLICITADO POR\b.*$/i,
+        /\bREQ\b\s+\d+\s+-\s+.*$/i,
+        /\bFORNECEDOR\b.*$/i,
+        /\bACORDO DE COOPERAÇÃO\b.*$/i,
+        /\bCONVÊNIO\b.*$/i,
+        /\b[A-Z]\)\b.*$/i,
+        /\bALBANEZ\b.*$/i,
+        /\bObs:.*$/i,
+        /\bObs\b.*$/i,
+        /\*\*\*/i,
+        /\/\//i,
+        /HMMG\.\d{4}\.\d+.*$/i,
+        /\bEscolhido o segundo fornecedor\b.*$/i,
+        /\bA\).*$/i,
+        /\bB\).*$/i,
+        /\b\d{1,2}-[A-Z]{3}-\d{2}\b/i,
+        /\b\d+\s*-\s*-\s*.*$/i,
+        /^REQ\b\s+.*$/i,
+        /\*\./g,
+        /\*/g,
+        /^(Tivemos que|Fizemos uma|Precisamos de|Adquirimos|Compramos|Realizamos|Necessitamos|Realizamos uma|Necessitamos de)\b.*$/i,
+    ];
 
-        const markers = [
-            /\bSOLICITADO POR\b.*$/i,
-            /\bACORDO DE COOPERAÇÃO\b.*$/i,
-            /\bCONVÊNIO\b.*$/i,
-            /\b[A-Z]\)\b.*$/i,
-            /\bALBANEZ\b.*$/i,
-            /\bObs:.*$/i,
-            /HMMG\.\d{4}\.\d+.*$/i,
-            /\bEscolhido o segundo fornecedor\b.*$/i,
-            /\bA\).*$/i,
-            /\bB\).*$/i,
-            /\bCAM\b.*$/i,
-            /\bCENTRO\b.*$/i,
-            /\bObs\b.*$/i,
-            /\*.*$/i,
-            /^\d{1,3}(\.\d{3})*,\d{2}$/i
-        ];
+    // Remover todos os padrões indesejados
+    unwantedPatternsList.forEach(pattern => {
+        desc = desc.replace(pattern, '').trim();
+    });
 
-        for (const marker of markers) {
-            desc = desc.replace(marker, '').trim();
-        }
+    // Substituição específica para preservar termos essenciais como "FRAMON"
+    desc = desc.replace(/FRAMON\s+OS\s+ORÇAMENTOS\.\s+ANEXO\s+AS\s+JUSTIFICATICAS\s+DELE\./i, 'FRAMON').trim();
 
-        desc = desc.replace(/(\.[A-Za-z0-9\-]+){2,}$/i, '').trim();
-
-    } while (desc !== oldDesc);
+    // Remover padrões como ".ABC-123" que aparecem no final da descrição
+    desc = desc.replace(/(\.[A-Za-z0-9\-]+){2,}$/i, '').trim();
 
     return desc;
 }
+function splitLineAtNewItemPattern(line) {
+    // Regex para identificar o início de um novo item
+    const regex = /(\d+\s+\d{8,}\.)/g;
+    let result = [];
+    let lastIndex = 0;
+    let match;
 
+    while ((match = regex.exec(line)) !== null) {
+        if (match.index > lastIndex) {
+            // Adiciona a parte anterior à correspondência
+            const precedingText = line.substring(lastIndex, match.index).trim();
+            if (precedingText) {
+                result.push(precedingText);
+            }
+        }
+        // Adiciona a correspondência (início de novo item)
+        lastIndex = match.index;
+    }
+
+    // Adiciona o restante da linha após a última correspondência
+    if (lastIndex < line.length) {
+        const remainingText = line.substring(lastIndex).trim();
+        if (remainingText) {
+            result.push(remainingText);
+        }
+    }
+
+    return result;
+}
+// Função para extrair itens a partir das linhas
 function extractItems(lines) {
     const itens = [];
     let isItemSection = false;
     let currentItem = null;
 
-    const itemLineRegex = new RegExp(
-        '^' +
-        '(\\d+)\\s+' +
-        '(\\d{8,})\\.' +
-        '(.*?)\\s+' +
-        '(?:(\\d{2}-[A-Z]{3}-\\d{2,4})\\s+)?' +
-        '([\\d.,]+)\\s+' +
-        '(\\w+)\\s+' +
-        '([\\d.,]+)\\s+' +
-        '([\\d.,]+)$'
-    );
+    // Regex refinado para corresponder linhas de itens, permitindo caracteres especiais na unidade
+    const itemLineRegex = /^(\d+)\s+(\d{8,})\.(.*?)\s+([\d.,]+)\s+([^\s]+)\s+([\d.,]+)\s+([\d.,]+)$/;
 
     function isNoiseLine(line) {
         const noisePatterns = [
@@ -158,10 +194,11 @@ function extractItems(lines) {
             /^OBSERVAÇÃO/i,
             /^\*\*\*/,
             /^\/\//,
+            /^REQ\b\s+.*$/i, // Regex aprimorada com word boundary
             /Linha\s+Produto\/Serviço/i,
             /^\d+\s+\d+\s+\d{2}-\d{2}-\d{4}\s+/
         ];
-
+    
         for (const pattern of noisePatterns) {
             if (pattern.test(line)) {
                 console.log(`Linha identificada como ruído: "${line}"`);
@@ -175,83 +212,93 @@ function extractItems(lines) {
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i].trim();
         if (!line) continue;
-        if (isPageHeaderOrFooter(line)) {
-            console.log(`Linha ignorada (cabeçalho/rodapé): "${line}"`);
-            continue;
-        }
 
-        if (!isItemSection && line.toLowerCase().includes('produto/serviço')) {
-            console.log('Encontrado cabeçalho de itens, iniciando seção de itens.');
-            isItemSection = true;
-            continue;
-        }
+        // Dividir a linha se o padrão de novo item for encontrado
+        const splitLines = splitLineAtNewItemPattern(line);
+        for (let splitLine of splitLines) {
+            if (!splitLine) continue;
 
-        if (isItemSection && (line.toLowerCase().includes('total geral') || line.toLowerCase().includes('total:'))) {
-            console.log(`Encontrado final da seção de itens em: "${line}"`);
-            if (currentItem) {
-                itens.push(currentItem);
-                console.log('Item finalizado antes do encerramento da seção:', currentItem);
-                currentItem = null;
+            if (isPageHeaderOrFooter(splitLine)) {
+                console.log(`Linha ignorada (cabeçalho/rodapé): "${splitLine}"`);
+                continue;
             }
-            isItemSection = false;
-            break;
-        }
 
-        if (isItemSection) {
-            console.log(`Processando linha dentro da seção de itens: "${line}"`);
-            const match = line.match(itemLineRegex);
-            if (match) {
+            if (!isItemSection && splitLine.toLowerCase().includes('produto/serviço')) {
+                console.log('Encontrado cabeçalho de itens, iniciando seção de itens.');
+                isItemSection = true;
+                continue;
+            }
+
+            if (isItemSection && (splitLine.toLowerCase().includes('total geral') || splitLine.toLowerCase().includes('total:'))) {
+                console.log(`Encontrado final da seção de itens em: "${splitLine}"`);
                 if (currentItem) {
                     itens.push(currentItem);
-                    console.log('Salvando item anterior:', currentItem);
+                    console.log('Item finalizado antes do encerramento da seção:', currentItem);
                     currentItem = null;
                 }
+                isItemSection = false;
+                break;
+            }
 
-                const lineNumber = parseInt(match[1], 10);
-                const code = match[2].trim();
-                let description = cleanDescription(match[3] || '');
-                const quantityStr = match[5];
-                const unit = match[6].trim();
-                const unitPriceStr = match[7];
-                const totalPriceStr = match[8];
+            if (isItemSection) {
+                console.log(`Processando linha dentro da seção de itens: "${splitLine}"`);
+                const match = splitLine.match(itemLineRegex);
+                if (match) {
+                    const lineNumber = parseInt(match[1], 10);
+                    const code = match[2].trim();
+                    const descriptionRaw = match[3] || '';
+                    let description = cleanDescription(descriptionRaw);
+                    const quantityStr = match[4];
+                    const unit = match[5].trim();
+                    const unitPriceStr = match[6];
+                    const totalPriceStr = match[7];
 
-                const quantity = parseFloat(quantityStr.replace(/\./g, '').replace(',', '.'));
-                const unitPrice = parseFloat(unitPriceStr.replace(/\./g, '').replace(',', '.'));
-                const totalPrice = parseFloat(totalPriceStr.replace(/\./g, '').replace(',', '.'));
+                    console.log(`Correspondência encontrada para item: Linha ${lineNumber}, Código ${code}`);
 
-                if (isNaN(quantity) || isNaN(unitPrice) || isNaN(totalPrice)) {
-                    console.warn(`Linha de item ignorada (valores inválidos): "${line}"`);
-                    continue;
-                }
+                    if (currentItem) {
+                        itens.push(currentItem);
+                        console.log('Salvando item anterior:', currentItem);
+                        currentItem = null;
+                    }
 
-                description = cleanExtraParts(description);
+                    const quantity = parseFloat(quantityStr.replace(/\./g, '').replace(',', '.'));
+                    const unitPrice = parseFloat(unitPriceStr.replace(/\./g, '').replace(',', '.'));
+                    const totalPrice = parseFloat(totalPriceStr.replace(/\./g, '').replace(',', '.'));
 
-                currentItem = {
-                    lineNumber,
-                    code,
-                    description,
-                    quantity,
-                    unit,
-                    unitPrice,
-                    totalPrice,
-                    received: false,
-                    receivedQuantity: 0,
-                    observation: ''
-                };
-                console.log('Novo item criado:', currentItem);
+                    if (isNaN(quantity) || isNaN(unitPrice) || isNaN(totalPrice)) {
+                        console.warn(`Linha de item ignorada (valores inválidos): "${splitLine}"`);
+                        continue;
+                    }
 
-            } else {
-                console.log(`Linha não corresponde a um item completo: "${line}"`);
-                if (currentItem && !isNoiseLine(line)) {
-                    let extraText = cleanDescription(line);
-                    extraText = cleanExtraParts(extraText);
+                    description = cleanExtraParts(description);
 
-                    if (extraText) {
-                        currentItem.description += ' ' + extraText;
-                        currentItem.description = currentItem.description.replace(/\s+/g, ' ').trim();
-                        console.log(`Descrição atualizada do item: "${currentItem.description}"`);
-                    } else {
-                        console.log('Linha extra ignorada após limpeza.');
+                    currentItem = {
+                        lineNumber,
+                        code,
+                        description,
+                        quantity,
+                        unit,
+                        unitPrice,
+                        totalPrice,
+                        received: false,
+                        receivedQuantity: 0,
+                        observation: ''
+                    };
+                    console.log('Novo item criado:', currentItem);
+
+                } else {
+                    console.log(`Linha não corresponde a um item completo: "${splitLine}"`);
+                    if (currentItem && !isNoiseLine(splitLine)) {
+                        let extraText = cleanDescription(splitLine);
+                        extraText = cleanExtraParts(extraText);
+
+                        if (extraText) {
+                            currentItem.description += ' ' + extraText;
+                            currentItem.description = currentItem.description.replace(/\s+/g, ' ').trim();
+                            console.log(`Descrição atualizada do item: "${currentItem.description}"`);
+                        } else {
+                            console.log('Linha extra ignorada após limpeza.');
+                        }
                     }
                 }
             }
@@ -270,7 +317,6 @@ function extractItems(lines) {
     console.log('Extração finalizada. Itens extraídos:', itens);
     return itens;
 }
-
 function extractOrderData(orderText) {
     const lines = orderText.split('\n').map(l => l.trim()).filter(l => l);
 
@@ -306,6 +352,10 @@ function extractOrderData(orderText) {
                     nomeFornecedor = lines[i+2] || nomeFornecedor;
                 }
             }
+
+            // **Aplicar a regex para remover "SENAC CAMPINAS"**
+            nomeFornecedor = nomeFornecedor.replace(/\bSENAC\s+CAMPINAS\b/i, '').trim();
+
             break;
         }
     }
