@@ -11,6 +11,183 @@
   <script src="https://unpkg.com/feather-icons"></script>
 </head>
 <body>
+  <!-- Modal de Login -->
+  <div id="login-modal" class="modal">
+    <div class="modal-content-login">
+      <span class="close-btn" id="close-login-modal"><i data-feather="x"></i></span>
+      <h2>Login</h2>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="login-email">E-mail:</label>
+          <input type="email" id="login-email" required>
+        </div>
+        <div class="form-group">
+          <label for="login-password">Senha:</label>
+          <input type="password" id="login-password" required>
+        </div>
+        <button type="submit" class="action-btn">Entrar</button>
+        <p>Não tem uma conta? <a href="#" id="open-register-modal">Cadastre-se</a></p>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Modal de Cadastro -->
+  <div id="register-modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close-btn" id="close-register-modal"><i data-feather="x"></i></span>
+      <h2>Cadastro</h2>
+      <form id="register-form">
+        <div class="form-group">
+          <label for="register-name">Nome:</label>
+          <input type="text" id="register-name" required>
+        </div>
+        <div class="form-group">
+          <label for="register-email">E-mail:</label>
+          <input type="email" id="register-email" required>
+        </div>
+        <div class="form-group">
+          <label for="register-password">Senha:</label>
+          <input type="password" id="register-password" required>
+        </div>
+        <button type="submit" class="action-btn">Cadastrar</button>
+        <p>Já tem uma conta? <a href="#" id="open-login-modal">Faça login</a></p>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Modal de Seleção de Área -->
+  <div id="select-area-modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close-btn" id="close-select-area-modal"><i data-feather="x"></i></span>
+      <h2>Selecionar Área Destinada</h2>
+      <form id="select-area-form">
+        <div class="form-group">
+          <label for="area-search">Buscar Área:</label>
+          <input type="text" id="area-search" placeholder="Pesquisar áreas...">
+        </div>
+        <div class="form-group">
+          <label for="area-select">Área:</label>
+          <select id="area-select" required>
+            <option value="">Selecione uma área</option>
+            <!-- Opções serão preenchidas via JavaScript -->
+          </select>
+        </div>
+        <div class="form-group hidden" id="new-area-group">
+          <label for="new-area">Outra Área:</label>
+          <input type="text" id="new-area" placeholder="Digite a nova área">
+        </div>
+        <button type="submit" class="action-btn">Confirmar</button>
+      </form>
+    </div>
+  </div>
+  <!-- Modal de Confirmação -->
+<div id="confirmation-modal" class="modal hidden">
+  <div class="modal-content">
+    <span class="close-btn"><i data-feather="x"></i></span>
+    <h2>Confirmar Ação</h2>
+    <p>Tem certeza que deseja salvar a conferência? Esta ação não pode ser desfeita.</p>
+    <div class="modal-actions">
+      <button id="confirm-save-conference" class="action-btn primary-action">Confirmar</button>
+      <button id="cancel-save-conference" class="action-btn">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+  <!-- Modal de Conferência de Pedido -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+        <span class="close-btn"><i data-feather="x"></i></span>
+        <h2>Conferência do Pedido</h2>
+        
+        <!-- Botões de ação no topo do modal -->
+        <div class="modal-actions">
+            <button id="print-order-btn" class="action-btn primary-action"><i data-feather="printer"></i> Imprimir Pedido</button>
+            <button id="save-conference-btn" class="action-btn primary-action"><i data-feather="save"></i> Salvar Conferência</button>
+        </div>
+        
+        <p><strong>Número do Pedido:</strong> <span id="modal-order-number"></span></p>
+        <p><strong>Fornecedor:</strong> <span id="modal-supplier-name"></span></p>
+        <p><strong>CNPJ:</strong> <span id="modal-supplier-cnpj"></span></p>
+        <p><strong>Enviado Por:</strong> <span id="modal-sender-name"></span></p>
+        <p><strong>Data de Envio:</strong> <span id="modal-send-date"></span></p>
+        
+        <table id="modal-items-table">
+            <thead>
+                <tr>
+                    <th>Linha</th>
+                    <th>Código</th>
+                    <th>Descrição</th>
+                    <th>Quantidade</th>
+                    <th>Unidade</th>
+                    <th>Preço Unitário</th>
+                    <th>Preço Total</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        
+        <div class="order-global-observation">
+            <label for="global-observation" class="tooltip"><strong>Observação do Pedido:</strong>
+                <span class="tooltiptext">Adicione uma observação para todo o pedido se necessário.</span>
+            </label>
+            <textarea id="global-observation" rows="4" placeholder="Adicione uma observação para todo o pedido"></textarea>
+        </div>
+        
+        <div class="file-upload-section">
+            <h3>Upload de Arquivos</h3>
+            <div class="file-upload-wrapper">
+                <label for="nf-upload" class="tooltip">Nota Fiscal:
+                    <span class="tooltiptext">Faça o upload da Nota Fiscal em PDF/JPG/PNG.</span>
+                </label>
+                <input type="file" id="nf-upload" accept="application/pdf, image/jpeg, image/png" aria-label="Upload de Nota Fiscal">
+            </div>
+            <div class="file-upload-wrapper">
+                <label for="boleto-upload" class="tooltip">Boleto:
+                    <span class="tooltiptext">Faça o upload do Boleto em PDF/JPG/PNG.</span>
+                </label>
+                <input type="file" id="boleto-upload" accept="application/pdf, image/jpeg, image/png" aria-label="Upload de Boleto">
+            </div>
+        </div>
+    </div>
+  </div>
+  
+  <!-- Modal de Ajuda -->
+  <div id="help-modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close-btn"><i data-feather="x"></i></span>
+      <h2>Ajuda</h2>
+      <div id="help-content">
+        <p>Para usar o sistema, siga as instruções abaixo:</p>
+        <ul>
+          <li><strong>Dashboard:</strong> Veja a visão geral dos pedidos.</li>
+          <li><strong>Comprador:</strong> Faça upload do PDF do pedido, confira o status e conclua se necessário.</li>
+          <li><strong>Recebimento:</strong> Confira itens pendentes, marque como recebido e adicione observações, fazendo upload da Nota Fiscal e Boleto.</li>
+          <li><strong>Finalizados:</strong> Veja pedidos concluídos ou devolvidos.</li>
+          <li><strong>Retirada:</strong> Confirme a retirada dos pedidos, inserindo o nome do retirante.</li>
+        </ul>
+        <p>Em caso de dúvidas, entre em contato com o suporte.</p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal de Retirada -->
+  <div id="withdrawal-modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close-btn"><i data-feather="x"></i></span>
+      <h2>Confirmar Retirada</h2>
+      <form id="withdrawal-form">
+        <div class="form-group">
+          <label for="withdrawer-name">Nome do Retirante:</label>
+          <input type="text" id="withdrawer-name" required>
+        </div>
+        <button type="submit" class="action-btn">Confirmar</button>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Contêiner de Notificações -->
+  <div id="notification-container"></div>
+  
   <div class="wrapper">
     <!-- Sidebar de Navegação -->
     <aside class="sidebar">
@@ -33,8 +210,15 @@
           </li>
           <li class="nav-item">
             <button id="receiver-btn" class="nav-btn" aria-label="Recebimento">
-              <i data-feather="truck"></i>
+              <i data-feather="box"></i>
               <span>Recebimento</span>
+            </button>
+          </li>
+          <!-- "Retirada" já está incluído diretamente no HTML -->
+          <li class="nav-item">
+            <button id="withdrawal-btn" class="nav-btn" aria-label="Retirada">
+              <i data-feather="truck"></i>
+              <span>Retirada</span>
             </button>
           </li>
           <li class="nav-item">
@@ -49,6 +233,12 @@
               <span>Ajuda</span>
             </button>
           </li>
+          <li class="nav-item">
+            <button id="logout-btn" class="nav-btn" aria-label="Logout">
+              <i data-feather="log-out"></i>
+              <span>Logout</span>
+            </button>
+          </li>
         </ul>
       </nav>
     </aside>
@@ -58,7 +248,7 @@
       <!-- Header -->
       <header>
         <h1>Sistema de Controle de Pedidos</h1>
-        <div class="user-profile">
+        <div class="user-profile" id="user-profile">
           <i data-feather="user"></i>
           <span>Usuário</span>
         </div>
@@ -85,7 +275,7 @@
                     <span class="status-icon"></span>Pendentes
                   </p>
                 </div>
-                <div class="status-card status-completed-status">
+                <div class="status-card status-received-status">
                   <h3 id="count-received">0</h3>
                   <p>
                     <span class="status-icon"></span>Recebidos
@@ -159,24 +349,7 @@
     
             <h3 class="section-title">Meus Pedidos</h3>
             <div id="buyer-orders-container" class="order-container">
-              <!-- Exemplo de card com status -->
-              <div class="order-card">
-                <h3>Pedido #12345</h3>
-                <div class="order-details">
-                  <p><strong>Fornecedor:</strong> ACME Corp.</p>
-                  <p><strong>CNPJ:</strong> 00.000.000/0001-00</p>
-                  <!-- Linha de status alinhada com Flexbox -->
-                  <div class="status-line status-pending">
-                    <span class="status-label">Status:</span>
-                    <span class="status-icon"></span>
-                    <span class="status-text">Pendente</span>
-                  </div>
-                </div>
-                <div class="order-actions">
-                  <button class="action-btn"><i data-feather="eye"></i> Visualizar</button>
-                </div>
-              </div>
-              <!-- Adicione mais cards conforme necessário -->
+              <!-- Os pedidos serão inseridos dinamicamente via JavaScript -->
             </div>
           </section>
           
@@ -207,24 +380,7 @@
             </div>
             <h3 class="section-title">Pedidos Pendentes</h3>
             <div id="receiver-orders-container" class="order-container">
-              <!-- Exemplo de card com status -->
-              <div class="order-card">
-                <h3>Pedido #67890</h3>
-                <div class="order-details">
-                  <p><strong>Fornecedor:</strong> Beta Ltda.</p>
-                  <p><strong>CNPJ:</strong> 11.111.111/0001-11</p>
-                  <!-- Linha de status alinhada com Flexbox -->
-                  <div class="status-line status-received">
-                    <span class="status-label">Status:</span>
-                    <span class="status-icon"></span>
-                    <span class="status-text">Recebido</span>
-                  </div>
-                </div>
-                <div class="order-actions">
-                  <button class="action-btn"><i data-feather="check"></i> Confirmar Recebimento</button>
-                </div>
-              </div>
-              <!-- Adicione mais cards conforme necessário -->
+              <!-- Os pedidos serão inseridos dinamicamente via JavaScript -->
             </div>
           </section>
           
@@ -253,87 +409,31 @@
             </div>
             <h3 class="section-title">Pedidos Finalizados</h3>
             <div id="finalized-orders-container" class="order-container">
-              <!-- Exemplo de card com status -->
-              <div class="order-card">
-                <h3>Pedido #54321</h3>
-                <div class="order-details">
-                  <p><strong>Fornecedor:</strong> Gamma SA</p>
-                  <p><strong>CNPJ:</strong> 22.222.222/0001-22</p>
-                  <!-- Linha de status alinhada com Flexbox -->
-                  <div class="status-line status-completed">
-                    <span class="status-label">Status:</span>
-                    <span class="status-icon"></span>
-                    <span class="status-text">Concluído</span>
-                  </div>
-                </div>
-                <div class="order-actions">
-                  <button class="action-btn"><i data-feather="printer"></i> Imprimir</button>
-                </div>
+              <!-- Os pedidos serão inseridos dinamicamente via JavaScript -->
+            </div>
+          </section>
+          
+          <!-- Seção de Retirada -->
+          <section id="withdrawal-section" class="hidden-section">
+            <div class="section-header">
+              <h2>Área de Retirada</h2>
+              <button id="withdrawal-help-btn" class="icon-btn tooltip" aria-label="Ajuda de Retirada">
+                <i data-feather="help-circle"></i>
+                <span class="tooltiptext">Clique para ver instruções de retirada.</span>
+              </button>
+            </div>
+            <div class="search-filter-container">
+              <div class="search-wrapper">
+                <input type="text" id="withdrawal-search" class="search-input" placeholder="Pesquisar por número, fornecedor, CNPJ ou descrição" aria-label="Pesquisar pedidos para retirada">
               </div>
-              <!-- Adicione mais cards conforme necessário -->
+            </div>
+            <h3 class="section-title">Pedidos para Retirada</h3>
+            <div id="withdrawal-orders-container" class="order-container">
+              <!-- Os pedidos serão inseridos dinamicamente via JavaScript -->
             </div>
           </section>
         </div>
       </main>
-      
-      <!-- Modal para Conferência de Pedido -->
-      <div id="modal" class="modal hidden">
-        <div class="modal-content">
-            <span class="close-btn"><i data-feather="x"></i></span>
-            <h2>Conferência do Pedido</h2>
-            
-            <!-- Botões de ação no topo do modal -->
-            <div class="modal-actions">
-                <button id="print-order-btn" class="action-btn primary-action"><i data-feather="printer"></i> Imprimir Pedido</button>
-                <button id="save-conference-btn" class="action-btn primary-action"><i data-feather="save"></i> Salvar Conferência</button>
-            </div>
-            
-            <p><strong>Número do Pedido:</strong> <span id="modal-order-number"></span></p>
-            <p><strong>Fornecedor:</strong> <span id="modal-supplier-name"></span></p>
-            <p><strong>CNPJ:</strong> <span id="modal-supplier-cnpj"></span></p>
-            
-            <table id="modal-items-table">
-                <thead>
-                    <tr>
-                        <th>Linha</th>
-                        <th>Código</th>
-                        <th>Descrição</th>
-                        <th>Quantidade</th>
-                        <th>Unidade</th>
-                        <th>Preço Unitário</th>
-                        <th>Preço Total</th>
-                        <th>Recebido</th>
-                        <th>Qtd. Recebida</th>
-                        <th>Observação</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-            
-            <div class="order-global-observation">
-                <label for="global-observation" class="tooltip"><strong>Observação do Pedido:</strong>
-                    <span class="tooltiptext">Adicione uma observação para todo o pedido se necessário.</span>
-                </label>
-                <textarea id="global-observation" rows="4" placeholder="Adicione uma observação para todo o pedido"></textarea>
-            </div>
-            
-            <div class="file-upload-section">
-                <h3>Upload de Arquivos</h3>
-                <div class="file-upload-wrapper">
-                    <label for="nf-upload" class="tooltip">Nota Fiscal:
-                        <span class="tooltiptext">Faça o upload da Nota Fiscal em PDF/JPG/PNG.</span>
-                    </label>
-                    <input type="file" id="nf-upload" accept="application/pdf, image/jpeg, image/png" aria-label="Upload de Nota Fiscal">
-                </div>
-                <div class="file-upload-wrapper">
-                    <label for="boleto-upload" class="tooltip">Boleto:
-                        <span class="tooltiptext">Faça o upload do Boleto em PDF/JPG/PNG.</span>
-                    </label>
-                    <input type="file" id="boleto-upload" accept="application/pdf, image/jpeg, image/png" aria-label="Upload de Boleto">
-                </div>
-            </div>
-        </div>
-      </div>
       
       <!-- Modal de Ajuda -->
       <div id="help-modal" class="modal hidden">
@@ -347,9 +447,25 @@
               <li><strong>Comprador:</strong> Faça upload do PDF do pedido, confira o status e conclua se necessário.</li>
               <li><strong>Recebimento:</strong> Confira itens pendentes, marque como recebido e adicione observações, fazendo upload da Nota Fiscal e Boleto.</li>
               <li><strong>Finalizados:</strong> Veja pedidos concluídos ou devolvidos.</li>
+              <li><strong>Retirada:</strong> Confirme a retirada dos pedidos, inserindo o nome do retirante.</li>
             </ul>
             <p>Em caso de dúvidas, entre em contato com o suporte.</p>
           </div>
+        </div>
+      </div>
+      
+      <!-- Modal de Retirada -->
+      <div id="withdrawal-modal" class="modal hidden">
+        <div class="modal-content">
+          <span class="close-btn"><i data-feather="x"></i></span>
+          <h2>Confirmar Retirada</h2>
+          <form id="withdrawal-form">
+            <div class="form-group">
+              <label for="withdrawer-name">Nome do Retirante:</label>
+              <input type="text" id="withdrawer-name" required>
+            </div>
+            <button type="submit" class="action-btn">Confirmar</button>
+          </form>
         </div>
       </div>
       

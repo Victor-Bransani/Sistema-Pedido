@@ -1,3 +1,5 @@
+/* css/styles.css */
+
 /* Variáveis CSS */
 :root {
     --primary-color: #2C3E50; 
@@ -37,6 +39,175 @@
     --shadow-medium: rgba(0, 0, 0, 0.2);
 }
 
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+.area-modal-content {
+    width: 100%;
+}
+
+.modal-content .close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+/* Login Container */
+.login-container {
+    width: 100%;
+    max-width: 400px;
+    margin: 100px auto;
+    padding: 30px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.login-container h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.login-container form {
+    display: flex;
+    flex-direction: column;
+}
+
+.login-container label {
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.login-container input {
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.login-container button {
+    padding: 10px;
+    background-color: #17A2B8;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.login-container button:hover {
+    background-color: #138496;
+}
+
+.login-container p {
+    text-align: center;
+    margin-top: 10px;
+}
+
+.login-container a {
+    color: #17A2B8;
+    text-decoration: none;
+}
+
+.login-container a:hover {
+    text-decoration: underline;
+}
+
+/* Register Container */
+.register-container {
+    width: 100%;
+    max-width: 400px;
+    margin: 100px auto;
+    padding: 30px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.register-container h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.register-container form {
+    display: flex;
+    flex-direction: column;
+}
+
+.register-container label {
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.register-container input {
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.register-container button {
+    padding: 10px;
+    background-color: #28a745;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.register-container button:hover {
+    background-color: #218838;
+}
+
+.register-container p {
+    text-align: center;
+    margin-top: 10px;
+}
+
+.register-container a {
+    color: #28a745;
+    text-decoration: none;
+}
+
+.register-container a:hover {
+    text-decoration: underline;
+}
+
+
+/* Reset e Box Sizing */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -53,6 +224,7 @@ body {
     font-weight: 300;
 }
 
+/* Wrapper */
 .wrapper {
     display: flex;
     height: 100vh;
@@ -149,6 +321,7 @@ body {
     background-color: var(--background-light);
 }
 
+/* Header */
 header {
     background-color: var(--background-dark);
     padding: var(--spacing-medium);
@@ -275,8 +448,6 @@ section:hover {
     width: 20px;
     height: 20px;
     stroke-width: 2;
-    color: var(--accent-color);
-    transition: color var(--transition-speed) ease;
 }
 
 .tooltip .tooltiptext {
@@ -361,7 +532,6 @@ section:hover {
     width: 16px;
     height: 16px;
     stroke-width: 2;
-    color: var(--text-light);
 }
 
 .action-btn {
@@ -388,7 +558,6 @@ section:hover {
     width: 16px;
     height: 16px;
     stroke-width: 2;
-    color: var(--text-light);
 }
 
 .conferir-btn {
@@ -480,7 +649,8 @@ section:hover {
 
 #buyer-orders-container,
 #receiver-orders-container,
-#finalized-orders-container {
+#finalized-orders-container,
+#pickup-orders-container {
     margin-top: var(--spacing-large);
 }
 
@@ -558,7 +728,6 @@ section:hover {
     margin-top: 10px;
 }
 
-/* Especificações de cores e tamanhos para cada status */
 .status-pending {
     color: var(--warning-color);
 }
@@ -691,7 +860,7 @@ section:hover {
     stroke-width: 2;
 }
 
-/* Botões de Ação no Modal (Reposicionados para o Topo) */
+/* Modal Actions */
 .modal-actions {
     display: flex;
     gap: var(--spacing-medium);
@@ -710,7 +879,7 @@ section:hover {
     transition: background-color var(--transition-speed), transform var(--transition-speed), box-shadow var(--transition-speed);
 }
 
-.modal-actions .action-btn.primary-action.primary-action:hover {
+.modal-actions .action-btn.primary-action:hover {
     background-color: var(--secondary-hover);
     transform: scale(1.05);
     box-shadow: 0 6px 8px rgba(0,0,0,0.15);
@@ -867,6 +1036,38 @@ section:hover {
 
 .close-notification:hover {
     color: rgba(255, 255, 255, 0.7);
+}
+
+/* Loader */
+.loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.loader.hidden {
+    display: none;
+}
+
+.spinner {
+    border: 8px solid #f3f3f3;
+    border-top: 8px solid var(--info-color);
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 /* Responsividade */
@@ -1091,34 +1292,6 @@ section:hover {
     outline: none;
 }
 
-@media (max-width: 768px) {
-    .modal-content {
-        padding: var(--spacing-medium);
-    }
-
-    .modal-actions {
-        flex-direction: column;
-        gap: var(--spacing-small);
-    }
-
-    .action-btn {
-        width: 100%;
-        justify-content: center;
-    }
-}
-
-@media (max-width: 480px) {
-    .status-container label,
-    .order-global-observation label {
-        font-size: var(--font-size-small);
-    }
-
-    .status-container select,
-    .order-global-observation textarea {
-        font-size: var(--font-size-small);
-    }
-}
-
 /* Container para pesquisa e filtro */
 .search-filter-container {
     display: flex;
@@ -1221,4 +1394,289 @@ section:hover {
     display: flex;
     flex-direction: column;
     gap: 16px;
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn var(--transition-speed) ease;
+}
+
+.modal.hidden {
+    display: none !important;
+}
+
+.modal-content-login {
+    background: var(--background-dark);
+    padding: var(--spacing-large);
+    border-radius: var(--border-radius);
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 4px 16px var(--shadow-medium);
+    animation: fadeIn var(--transition-speed) ease;
+}
+
+.modal-content{
+    background: var(--background-dark);
+    padding: var(--spacing-large);
+    border-radius: var(--border-radius);
+    width: 90%;
+    max-width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 4px 16px var(--shadow-medium);
+    animation: fadeIn var(--transition-speed) ease;
+}
+
+.close-btn {
+    position: absolute;
+    top: var(--spacing-small);
+    right: var(--spacing-small);
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    color: var(--accent-color);
+    transition: color var(--transition-speed) ease, transform var(--transition-speed) ease;
+}
+
+.close-btn:hover {
+    color: var(--error-color);
+    transform: rotate(90deg);
+}
+
+.close-btn svg {
+    width: 24px;
+    height: 24px;
+    stroke-width: 2;
+}
+
+.form-group {
+    margin-bottom: var(--spacing-medium);
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 4px;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: var(--spacing-small);
+    border: 1px solid var(--accent-color);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-base);
+    background-color: #FDFDFD;
+    transition: border-color var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 5px var(--secondary-color);
+    outline: none;
+}
+
+.action-btn {
+    background-color: var(--secondary-color);
+    color: var(--text-light);
+    border: none;
+    padding: var(--spacing-small) var(--spacing-medium);
+    cursor: pointer;
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-small);
+    transition: background-color var(--transition-speed) ease, transform var(--transition-speed) ease;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-small);
+    font-weight: 500;
+}
+
+.action-btn:hover {
+    background-color: var(--secondary-hover);
+    transform: scale(1.05);
+}
+
+.action-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2;
+}
+
+.form-group.hidden {
+    display: none;
+}
+
+#select-area-form .form-group {
+    position: relative;
+}
+
+/* Loader */
+.loader {
+    border: 4px solid var(--background-dark);
+    border-top: 4px solid var(--secondary-color);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    animation: spin 1s linear infinite;
+    margin-left: var(--spacing-small);
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsividade para Modais */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        padding: var(--spacing-medium);
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-content {
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+    }
+}
+
+/* Destaque das Informações do Usuário no Pedido */
+.order-details p strong {
+    color: var(--primary-color);
+}
+
+/* Tooltip */
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 220px;
+    background-color: #555;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: var(--spacing-small) 0;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -110px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: var(--font-size-small);
+}
+
+.tooltip .tooltiptext::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #555 transparent transparent transparent;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+/* Estilos para Autenticação */
+.auth-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: var(--background-light);
+}
+
+.auth-container {
+    background-color: var(--background-dark);
+    padding: var(--spacing-large);
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 8px var(--shadow-medium);
+    width: 90%;
+    max-width: 400px;
+}
+
+.auth-container h2 {
+    text-align: center;
+    margin-bottom: var(--spacing-medium);
+    color: var(--primary-color);
+}
+
+.auth-container form {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group {
+    margin-bottom: var(--spacing-medium);
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: var(--spacing-small);
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.form-group input {
+    width: 100%;
+    padding: var(--spacing-small);
+    border: 1px solid var(--accent-color);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-base);
+    transition: border-color var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
+    background-color: #FDFDFD;
+}
+
+.form-group input:focus {
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 5px var(--secondary-color);
+    outline: none;
+}
+
+.auth-container button {
+    align-self: center;
+}
+
+.auth-container p {
+    text-align: center;
+    margin-top: var(--spacing-small);
+    color: var(--text-color);
+}
+
+.auth-container a {
+    color: var(--secondary-color);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.auth-container a:hover {
+    text-decoration: underline;
+}
+
+/* Responsividade para Auth */
+@media (max-width: 480px) {
+    .auth-container {
+        padding: var(--spacing-medium);
+    }
 }

@@ -1,5 +1,7 @@
+// Inicialização do PDF.js
 pdfjsLib.GlobalWorkerOptions.workerSrc = './libs/pdfjs/pdf.worker.js';
 
+// Definição de Estados e Constantes
 const OrderStatus = {
     PENDING: 'pending',
     RECEIVED: 'received',
@@ -10,10 +12,98 @@ const OrderStatus = {
 
 const RETURN_KEYWORDS = ['devolvido', 'retorno', 'volta', 'reembolso'];
 
-const currentUser = {
-    role: 'buyer' // Ajustar conforme necessidade
-};
+const AREAS = [
+    'BIBLIOTECA',
+    'SECRETARIA',
+    'ENFERMAGEM',
+    'ATENDIMENTO',
+    'TI',
+    'GERÊNCIA',
+    'PATRIMONIO',
+    'FUNDAÇÃO CASA',
+    'DESENVOLVIMENTO SOCIAL',
+    'SALA, BAR E RESTAURANTE',
+    'PODOLOGIA',
+    'SETOR TÉCNICO',
+    'FARMACIA',
+    'RADIOLOGIA',
+    'PROTESE',
+    'ESTETICA',
+    'ADMINISTRAÇÃO E NEGÓCIOS',
+    'EMED',
+    'SEGURANÇA DO TRABALHO',
+    'MANUTENÇÃO',
+    'MODA E ARQUITETURA',
+    'CULTURA E COMUNICAÇÃO',
+    'BEM-ESTAR',
+    'APRENDIZAGEM'
+];
 
+// Funções de Gestão de Usuário
+function getUsers() {
+    try {
+        const users = JSON.parse(localStorage.getItem('users'));
+        return Array.isArray(users) ? users : [];
+    } catch (error) {
+        console.error('Erro ao parsear usuários do LocalStorage:', error);
+        return [];
+    }
+}
+
+function saveUsers(users) {
+    localStorage.setItem('users', JSON.stringify(users));
+}
+
+function registerUser(name, email, password) {
+    const users = getUsers();
+    const exists = users.some(user => user.email === email);
+    if (exists) {
+        showNotification('E-mail já cadastrado.', 'error');
+        return false;
+    }
+    const newUser = {
+        id: Date.now(),
+        name,
+        email,
+        password, // Nota: Em produção, as senhas devem ser hashadas
+        role: 'user' // Por enquanto, todos são 'user'
+    };
+    users.push(newUser);
+    saveUsers(users);
+    showNotification('Cadastro realizado com sucesso! Faça login.', 'success');
+    return true;
+}
+
+function loginUser(email, password) {
+    const users = getUsers();
+    const user = users.find(u => u.email === email && u.password === password);
+    if (user) {
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        showNotification(`Bem-vindo, ${user.name}!`, 'success');
+        return true;
+    } else {
+        showNotification('E-mail ou senha inválidos.', 'error');
+        return false;
+    }
+}
+
+function logoutUser() {
+    localStorage.removeItem('currentUser');
+    showNotification('Logout realizado com sucesso.', 'info');
+    window.location.reload();
+}
+
+function getCurrentUser() {
+    try {
+        const user = JSON.parse(localStorage.getItem('currentUser'));
+        return user || null;
+    } catch (error) {
+        console.error('Erro ao parsear usuário atual:', error);
+        return null;
+    }
+}
+
+// Funções de Gestão de Pedidos
 if (!localStorage.getItem('orders')) {
     localStorage.setItem('orders', JSON.stringify([]));
 }
@@ -106,7 +196,6 @@ function cleanExtraParts(description) {
 
     // Lista de padrões indesejados a serem removidos
     const unwantedPatternsList = [
-        // Padrões específicos
         /\b\d{1,3}(?:\.\d{3})*,\d{2}\b/g, // Padrão para valores monetários
         /SEGUNDA COTAÇÃO E COMPRAMOS NUMA URGÊNCIA\.$/i,
         /OS\s+ORÇAMENTOS\.\s+ANEXO\s+AS\s+JUSTIFICATICAS\s+DELE\./i,
@@ -149,6 +238,7 @@ function cleanExtraParts(description) {
 
     return desc;
 }
+
 function splitLineAtNewItemPattern(line) {
     // Regex para identificar o início de um novo item
     const regex = /(\d+\s+\d{8,}\.)/g;
@@ -178,6 +268,7 @@ function splitLineAtNewItemPattern(line) {
 
     return result;
 }
+
 // Função para extrair itens a partir das linhas
 function extractItems(lines) {
     const itens = [];
@@ -317,12 +408,15 @@ function extractItems(lines) {
     console.log('Extração finalizada. Itens extraídos:', itens);
     return itens;
 }
+
 function extractOrderData(orderText) {
     const lines = orderText.split('\n').map(l => l.trim()).filter(l => l);
 
     let numeroPedido = 'Não encontrado';
     let nomeFornecedor = 'Não encontrado';
     let cnpjFornecedor = 'Não encontrado';
+    let senderName = 'Não encontrado';
+    let sendDate = 'Não encontrado';
 
     for (let i = 0; i < lines.length; i++) {
         if (/pedido/i.test(lines[i])) {
@@ -360,6 +454,16 @@ function extractOrderData(orderText) {
         }
     }
 
+    // Capturar o nome do remetente e data de envio (assumindo que estão em linhas específicas)
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].toLowerCase().includes('enviado por:')) {
+            senderName = lines[i].split(':')[1].trim() || 'Não encontrado';
+        }
+        if (lines[i].toLowerCase().includes('data de envio:')) {
+            sendDate = lines[i].split(':')[1].trim() || 'Não encontrado';
+        }
+    }
+
     const globalObservation = '';
     const itens = extractItems(lines);
 
@@ -367,11 +471,17 @@ function extractOrderData(orderText) {
         numeroPedido,
         nomeFornecedor,
         cnpjFornecedor,
+        senderName,
+        sendDate,
         itens,
         globalObservation,
         status: determineOrderStatus({itens, globalObservation}),
         nfFile: '',
-        boletoFile: ''
+        boletoFile: '',
+        area: '',
+        receiveDate: '',
+        withdrawalDate: '',
+        withdrawer: ''
     };
 
     return order;
@@ -454,6 +564,13 @@ function displayBuyerOrders() {
         return;
     }
 
+    // Ordenar por data de envio, mais recente primeiro
+    filteredOrders.sort((a, b) => {
+        const dateA = parseDate(a.sendDate);
+        const dateB = parseDate(b.sendDate);
+        return dateB - dateA;
+    });
+
     filteredOrders.forEach(order => {
         const itens = Array.isArray(order.itens) ? order.itens : [];
         const totalValue = itens.reduce((acc, item) => {
@@ -469,6 +586,9 @@ function displayBuyerOrders() {
             <div class="order-details">
                 <p><strong>Fornecedor:</strong> ${order.nomeFornecedor}</p>
                 <p><strong>CNPJ:</strong> ${order.cnpjFornecedor}</p>
+                <p><strong>Enviado Por:</strong> ${order.senderName}</p>
+                <p><strong>Data de Envio:</strong> ${order.sendDate}</p>
+                <p><strong>Área Destinada:</strong> ${order.area || 'Não definida'}</p>
                 <p><strong>Status:</strong> 
                     <span class="status-${order.status}">
                         <i data-feather="${getStatusIcon(order.status)}"></i> ${formatStatus(order.status)}
@@ -480,7 +600,7 @@ function displayBuyerOrders() {
             <button class="visualizar-itens-btn"><i data-feather="eye"></i> Visualizar Itens</button>
             
             <div class="order-actions">
-                ${currentUser.role === 'buyer' && order.status !== OrderStatus.PENDING && order.status !== OrderStatus.RETURNED ? `<button class="finalizar-pedido-btn"><i data-feather="check"></i> Concluir Pedido</button>` : ''}
+                ${getCurrentUser().role === 'buyer' && [OrderStatus.RECEIVED, OrderStatus.WITH_OBSERVATIONS].includes(order.status) ? `<button class="finalizar-pedido-btn"><i data-feather="check"></i> Concluir Pedido</button>` : ''}
             </div>
             <div class="items-list" style="display: none;">
                 <table>
@@ -493,8 +613,6 @@ function displayBuyerOrders() {
                             <th>Unidade</th>
                             <th>Preço Unitário</th>
                             <th>Preço Total</th>
-                            <th>Status</th>
-                            <th>Observação</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -511,13 +629,11 @@ function displayBuyerOrders() {
                                 <td>${item.unit || '-'}</td>
                                 <td>R$ ${!isNaN(uPrice) ? uPrice.toFixed(2) : '0.00'}</td>
                                 <td>R$ ${!isNaN(qty) && !isNaN(uPrice) ? tPrice : '0.00'}</td>
-                                <td>${item.received ? 'Recebido' : 'Pendente'}</td>
-                                <td>${item.observation || '-'}</td>
                             </tr>`;
                         }).join('')}
                         <tr class="total-row">
-                            <td colspan="6"><strong>Total:</strong></td>
-                            <td colspan="3"><strong>R$ ${totalValue}</strong></td>
+                            <td colspan="5"><strong>Total:</strong></td>
+                            <td colspan="2"><strong>R$ ${totalValue}</strong></td>
                         </tr>
                     </tbody>
                 </table>
@@ -554,16 +670,11 @@ function displayReceiverOrders() {
     if (!searchInput || !pendingFilter) return;
 
     const searchValue = searchInput.value;
-    const showOnlyPending = pendingFilter.checked;
+    const selectedStatus = pendingFilter.value;
+    let orders = getOrders();
 
-    let orders = getOrders().filter(order => 
-        [OrderStatus.PENDING, OrderStatus.RECEIVED, OrderStatus.WITH_OBSERVATIONS, OrderStatus.RETURNED].includes(order.status)
-    );
-
-    if (showOnlyPending) {
-        orders = orders.filter(order => 
-            order.itens.some(item => !item.received || item.receivedQuantity < item.quantity)
-        );
+    if (selectedStatus !== 'all') {
+        orders = orders.filter(order => order.status === selectedStatus);
     }
 
     const filteredOrders = orders.filter(order => orderMatchesSearch(order, searchValue));
@@ -572,6 +683,13 @@ function displayReceiverOrders() {
         receiverOrdersContainer.innerHTML = '<p>Nenhum pedido pendente encontrado.</p>';
         return;
     }
+
+    // Ordenar por data de envio, mais recente primeiro
+    filteredOrders.sort((a, b) => {
+        const dateA = parseDate(a.sendDate);
+        const dateB = parseDate(b.sendDate);
+        return dateB - dateA;
+    });
 
     filteredOrders.forEach(order => {
         const itens = Array.isArray(order.itens) ? order.itens : [];
@@ -584,15 +702,17 @@ function displayReceiverOrders() {
             <div class="order-details">
                 <p><strong>Fornecedor:</strong> ${order.nomeFornecedor}</p>
                 <p><strong>CNPJ:</strong> ${order.cnpjFornecedor}</p>
+                <p><strong>Enviado Por:</strong> ${order.senderName}</p>
+                <p><strong>Data de Envio:</strong> ${order.sendDate}</p>
+                <p><strong>Área Destinada:</strong> ${order.area || 'Não definida'}</p>
                 <p><strong>Status:</strong> 
                     <span class="status-${order.status}">
                         <i data-feather="${getStatusIcon(order.status)}"></i> ${formatStatus(order.status)}
                     </span>
                 </p>
-                ${hasPendingItems ? '<p class="pending-items">Itens Pendentes</p>' : ''}
             </div>
             <div class="order-actions">
-                <button class="conferir-btn"><i data-feather="check-circle"></i> Conferir</button>
+                <button class="action-btn conferir-btn"><i data-feather="check-circle"></i> Conferir</button>
             </div>
         `;
 
@@ -635,6 +755,13 @@ function displayFinalizedOrders() {
         return;
     }
 
+    // Ordenar por data de envio, mais recente primeiro
+    filteredOrders.sort((a, b) => {
+        const dateA = parseDate(a.sendDate);
+        const dateB = parseDate(b.sendDate);
+        return dateB - dateA;
+    });
+
     filteredOrders.forEach(order => {
         const itens = Array.isArray(order.itens) ? order.itens : [];
         const totalValue = itens.reduce((acc, item) => {
@@ -643,8 +770,6 @@ function displayFinalizedOrders() {
             return acc + (q * p);
         }, 0).toFixed(2);
 
-        const icon = getStatusIcon(order.status);
-
         const orderCard = document.createElement('div');
         orderCard.className = 'order-card';
         orderCard.innerHTML = `
@@ -652,9 +777,12 @@ function displayFinalizedOrders() {
             <div class="order-details">
                 <p><strong>Fornecedor:</strong> ${order.nomeFornecedor}</p>
                 <p><strong>CNPJ:</strong> ${order.cnpjFornecedor}</p>
+                <p><strong>Enviado Por:</strong> ${order.senderName}</p>
+                <p><strong>Data de Envio:</strong> ${order.sendDate}</p>
+                <p><strong>Área Destinada:</strong> ${order.area || 'Não definida'}</p>
                 <p><strong>Status:</strong> 
                     <span class="status-${order.status}">
-                        <i data-feather="${icon}"></i> ${formatStatus(order.status)}
+                        <i data-feather="${getStatusIcon(order.status)}"></i> ${formatStatus(order.status)}
                     </span>
                 </p>
                 ${order.globalObservation ? `<p><strong>Observação do Pedido:</strong> ${order.globalObservation}</p>` : ''}
@@ -662,6 +790,9 @@ function displayFinalizedOrders() {
             <!-- Botão visualizar itens no canto superior direito -->
             <button class="visualizar-itens-btn"><i data-feather="eye"></i> Visualizar Itens</button>
             
+            <div class="order-actions">
+                <button class="action-btn"><i data-feather="printer"></i> Imprimir</button>
+            </div>
             <div class="items-list" style="display: none;">
                 <table>
                     <thead>
@@ -713,7 +844,65 @@ function displayFinalizedOrders() {
     feather.replace();
 }
 
-// Modal de Conferência do Pedido
+function displayWithdrawalOrders() {
+    const withdrawalOrdersContainer = document.getElementById('withdrawal-orders-container');
+    if (!withdrawalOrdersContainer) return;
+
+    withdrawalOrdersContainer.innerHTML = '';
+
+    const searchInput = document.getElementById('withdrawal-search');
+
+    if (!searchInput) return;
+
+    const searchValue = searchInput.value;
+    let orders = getOrders().filter(order => order.status === OrderStatus.RECEIVED);
+
+    const filteredOrders = orders.filter(order => orderMatchesSearch(order, searchValue));
+
+    if (filteredOrders.length === 0) {
+        withdrawalOrdersContainer.innerHTML = '<p>Nenhum pedido para retirada encontrado.</p>';
+        return;
+    }
+
+    // Ordenar por data de envio, mais recente primeiro
+    filteredOrders.sort((a, b) => {
+        const dateA = parseDate(a.sendDate);
+        const dateB = parseDate(b.sendDate);
+        return dateB - dateA;
+    });
+
+    filteredOrders.forEach(order => {
+        const orderCard = document.createElement('div');
+        orderCard.className = 'order-card';
+        orderCard.innerHTML = `
+            <h3>Pedido Nº ${order.numeroPedido}</h3>
+            <div class="order-details">
+                <p><strong>Fornecedor:</strong> ${order.nomeFornecedor}</p>
+                <p><strong>CNPJ:</strong> ${order.cnpjFornecedor}</p>
+                <p><strong>Enviado Por:</strong> ${order.senderName}</p>
+                <p><strong>Data de Envio:</strong> ${order.sendDate}</p>
+                <p><strong>Área Destinada:</strong> ${order.area || 'Não definida'}</p>
+                <p><strong>Status:</strong> 
+                    <span class="status-${order.status}">
+                        <i data-feather="${getStatusIcon(order.status)}"></i> ${formatStatus(order.status)}
+                    </span>
+                </p>
+            </div>
+            <div class="order-actions">
+                <button class="action-btn retirar-btn"><i data-feather="truck"></i> Confirmar Retirada</button>
+            </div>
+        `;
+
+        withdrawalOrdersContainer.appendChild(orderCard);
+        const retirarBtn = orderCard.querySelector('.retirar-btn');
+        retirarBtn.addEventListener('click', () => {
+            openWithdrawalModal(order.numeroPedido);
+        });
+    });
+
+    feather.replace();
+}
+
 function openConferenceModal(orderNumber) {
     const modal = document.getElementById('modal');
     if (!modal) return;
@@ -727,6 +916,8 @@ function openConferenceModal(orderNumber) {
     document.getElementById('modal-order-number').innerText = order.numeroPedido;
     document.getElementById('modal-supplier-name').innerText = order.nomeFornecedor;
     document.getElementById('modal-supplier-cnpj').innerText = order.cnpjFornecedor;
+    document.getElementById('modal-sender-name').innerText = order.senderName;
+    document.getElementById('modal-send-date').innerText = order.sendDate;
 
     const itemsTableBody = document.querySelector('#modal-items-table tbody');
     itemsTableBody.innerHTML = '';
@@ -743,9 +934,6 @@ function openConferenceModal(orderNumber) {
             <td>${item.unit}</td>
             <td>R$ ${item.unitPrice && !isNaN(item.unitPrice) ? item.unitPrice.toFixed(2) : '0.00'}</td>
             <td>R$ ${(qty * (item.unitPrice || 0)).toFixed(2)}</td>
-            <td><input type="number" min="0" max="${qty}" value="${item.receivedQuantity || 0}" data-line-number="${item.lineNumber}" class="received-quantity"></td>
-            <td><input type="checkbox" ${item.received ? 'checked' : ''} data-line-number="${item.lineNumber}" class="received-checkbox"></td>
-            <td><input type="text" value="${item.observation || ''}" data-line-number="${item.lineNumber}" class="observation-input" placeholder="Observação"></td>
         `;
         itemsTableBody.appendChild(row);
     });
@@ -754,6 +942,16 @@ function openConferenceModal(orderNumber) {
 
     modal.dataset.orderNumber = order.numeroPedido;
     modal.classList.remove('hidden');
+
+    feather.replace();
+}
+
+function openWithdrawalModal(orderNumber) {
+    const withdrawalModal = document.getElementById('withdrawal-modal');
+    if (!withdrawalModal) return;
+
+    withdrawalModal.dataset.orderNumber = orderNumber;
+    withdrawalModal.classList.remove('hidden');
 
     feather.replace();
 }
@@ -771,10 +969,12 @@ closeButtons.forEach(button => {
 });
 
 window.addEventListener('click', function(event) {
-    const helpModal = document.getElementById('help-modal');
-    const modal = document.getElementById('modal');
-    if (event.target === helpModal) closeHelpModal();
-    if (event.target === modal) closeModal();
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        if (event.target === modal) {
+            modal.classList.add('hidden');
+        }
+    });
 });
 
 // Notificações
@@ -810,51 +1010,190 @@ function isReturnedObservation(observation) {
     return RETURN_KEYWORDS.some(keyword => obsLower.includes(keyword));
 }
 
-document.getElementById('save-conference-btn').addEventListener('click', () => {
-    const modal = document.getElementById('modal');
-    const orderNumber = modal.dataset.orderNumber;
-    const nfFile = document.getElementById('nf-upload').files[0];
-    const boletoFile = document.getElementById('boleto-upload').files[0];
-    const globalObservationInput = document.getElementById('global-observation');
+// Funções de Upload e Processamento de PDF
+document.getElementById('process-pdf').addEventListener('click', () => {
+    const fileInput = document.getElementById('pdf-upload');
+    const file = fileInput.files[0];
+    if (!file) {
+        showNotification('Por favor, selecione um arquivo PDF.', 'error');
+        return;
+    }
 
-    const itemsRows = document.querySelectorAll('#modal-items-table tbody tr');
-    const updatedItems = [];
-    let errorFound = false;
+    const fileReader = new FileReader();
+    fileReader.onload = function () {
+        const typedarray = new Uint8Array(this.result);
 
-    itemsRows.forEach(row => {
-        const receivedQuantityInput = row.querySelector('.received-quantity');
-        const receivedCheckbox = row.querySelector('.received-checkbox');
-        const observationInput = row.querySelector('.observation-input');
+        pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+            let pagePromises = [];
+            for (let i = 1; i <= pdf.numPages; i++) {
+                pagePromises.push(pdf.getPage(i).then(page => {
+                    return page.getTextContent().then(textContent => {
+                        let lines = {};
+                        textContent.items.forEach(item => {
+                            let x = item.transform[4];
+                            let y = item.transform[5];
+                            let yRounded = Math.round(y / 5) * 5;
+                            if (!lines[yRounded]) {
+                                lines[yRounded] = [];
+                            }
+                            lines[yRounded].push({ x: x, str: item.str });
+                        });
 
-        const lineNumber = parseInt(receivedQuantityInput.getAttribute('data-line-number'));
-        const received = receivedCheckbox.checked;
-        let receivedQuantity = parseFloat(receivedQuantityInput.value) || 0;
-        const quantity = parseFloat(row.cells[3].innerText);
+                        let sortedY = Object.keys(lines).sort((a, b) => b - a);
+                        let pageText = '';
 
-        if (isNaN(receivedQuantity) || receivedQuantity < 0) {
-            showNotification(`Quantidade recebida inválida para o item linha ${lineNumber}.`, 'error');
-            errorFound = true;
-            return;
-        }
+                        sortedY.forEach(y => {
+                            let items = lines[y];
+                            items.sort((a, b) => a.x - b.x);
+                            let lineText = items.map(item => item.str).join(' ');
+                            pageText += lineText + '\n';
+                        });
 
-        if (receivedQuantity > quantity) {
-            receivedQuantity = quantity;
-            showNotification(`Quantidade recebida do item linha ${lineNumber} excede a quantidade total. Ajustada para ${quantity}.`, 'info');
-        }
+                        return pageText;
+                    });
+                }));
+            }
 
-        const observation = observationInput.value.trim();
-        const isReturned = isReturnedObservation(observation);
-        updatedItems.push({
-            lineNumber,
-            received,
-            receivedQuantity,
-            observation: isReturned ? 'Devolvido' : observation,
+            Promise.all(pagePromises).then(pagesText => {
+                const textoCompleto = pagesText.join('\n');
+                const order = extractOrderData(textoCompleto);
+                if (order.numeroPedido === 'Não encontrado') {
+                    showNotification('Erro ao extrair o número do pedido.', 'error');
+                    return;
+                }
+
+                const orders = getOrders();
+                const exists = orders.some(o => o.numeroPedido === order.numeroPedido);
+                if (exists) {
+                    showNotification('Pedido já existe no sistema.', 'error');
+                    return;
+                }
+
+                const currentUser = getCurrentUser();
+                order.senderName = currentUser.name;
+                order.sendDate = getCurrentDate();
+
+                // Abrir modal de seleção de área
+                openSelectAreaModal(order);
+
+                // Temporariamente armazenar o pedido antes da seleção de área
+                localStorage.setItem('tempOrder', JSON.stringify(order));
+            });
+        }).catch(error => {
+            console.error('Erro ao processar o PDF:', error);
+            showNotification('Erro ao processar o PDF.', 'error');
         });
+    };
+
+    fileReader.readAsArrayBuffer(file);
+});
+
+// Funções de Seleção de Área
+function openSelectAreaModal(order) {
+    const selectAreaModal = document.getElementById('select-area-modal');
+    if (!selectAreaModal) return;
+
+    const areaSelect = document.getElementById('area-select');
+    const newAreaGroup = document.getElementById('new-area-group');
+
+    // Preencher as opções do select
+    areaSelect.innerHTML = '<option value="">Selecione uma área</option>';
+    AREAS.forEach(area => {
+        const option = document.createElement('option');
+        option.value = area;
+        option.text = area;
+        areaSelect.appendChild(option);
     });
 
-    if (errorFound) return;
+    // Adicionar opção "Outra"
+    const otherOption = document.createElement('option');
+    otherOption.value = 'Outra';
+    otherOption.text = 'Outra';
+    areaSelect.appendChild(otherOption);
 
-    const globalObservation = globalObservationInput ? globalObservationInput.value.trim() : '';
+    // Event Listener para mostrar campo de nova área
+    areaSelect.addEventListener('change', () => {
+        if (areaSelect.value === 'Outra') {
+            newAreaGroup.classList.remove('hidden');
+            document.getElementById('new-area').required = true;
+        } else {
+            newAreaGroup.classList.add('hidden');
+            document.getElementById('new-area').required = false;
+        }
+    });
+
+    selectAreaModal.classList.remove('hidden');
+}
+
+document.getElementById('close-select-area-modal').addEventListener('click', () => {
+    closeModal();
+    localStorage.removeItem('tempOrder');
+});
+
+document.getElementById('select-area-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const areaSelect = document.getElementById('area-select');
+    let selectedArea = areaSelect.value;
+    if (selectedArea === 'Outra') {
+        const newAreaInput = document.getElementById('new-area');
+        selectedArea = newAreaInput.value.trim();
+        if (selectedArea) {
+            // Adicionar a nova área à lista e salvar no localStorage para futuras operações
+            AREAS.push(selectedArea.toUpperCase());
+            saveAreas();
+        } else {
+            showNotification('Por favor, insira a nova área.', 'error');
+            return;
+        }
+    }
+
+    const tempOrder = JSON.parse(localStorage.getItem('tempOrder'));
+    if (!tempOrder) {
+        showNotification('Erro ao obter o pedido temporário.', 'error');
+        closeModal();
+        return;
+    }
+
+    tempOrder.area = selectedArea;
+    tempOrder.status = OrderStatus.PENDING; // Atualizar status após seleção de área
+
+    const orders = getOrders();
+    orders.push(tempOrder);
+    saveOrders(orders);
+    showNotification('Pedido processado e salvo com sucesso!', 'success');
+    localStorage.removeItem('tempOrder');
+    closeModal();
+    updateDashboardStats();
+    displayBuyerOrders();
+    displayReceiverOrders();
+    displayFinalizedOrders();
+    displayWithdrawalOrders();
+});
+
+function saveAreas() {
+    localStorage.setItem('areas', JSON.stringify(AREAS));
+}
+
+// Funções de Retirada
+function openWithdrawalModal(orderNumber) {
+    const withdrawalModal = document.getElementById('withdrawal-modal');
+    if (!withdrawalModal) return;
+
+    withdrawalModal.dataset.orderNumber = orderNumber;
+    withdrawalModal.classList.remove('hidden');
+}
+
+document.getElementById('withdrawal-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const withdrawerNameInput = document.getElementById('withdrawer-name');
+    const withdrawerName = withdrawerNameInput.value.trim();
+    if (!withdrawerName) {
+        showNotification('Por favor, insira o nome do retirante.', 'error');
+        return;
+    }
+
+    const withdrawalModal = document.getElementById('withdrawal-modal');
+    const orderNumber = withdrawalModal.dataset.orderNumber;
     const orders = getOrders();
     const orderIndex = orders.findIndex(o => o.numeroPedido === orderNumber);
     if (orderIndex === -1) {
@@ -862,18 +1201,395 @@ document.getElementById('save-conference-btn').addEventListener('click', () => {
         return;
     }
 
-    orders[orderIndex].itens.forEach(item => {
-        const updatedItem = updatedItems.find(u => u.lineNumber === item.lineNumber);
-        if (updatedItem) {
-            item.received = updatedItem.received;
-            item.receivedQuantity = updatedItem.receivedQuantity;
-            item.observation = updatedItem.observation;
+    orders[orderIndex].withdrawer = withdrawerName;
+    orders[orderIndex].withdrawalDate = getCurrentDate();
+    orders[orderIndex].status = OrderStatus.COMPLETED;
+    saveOrders(orders);
+
+    showNotification('Retirada confirmada e pedido concluído!', 'success');
+    withdrawalModal.classList.add('hidden');
+    updateDashboardStats();
+    displayWithdrawalOrders();
+    displayFinalizedOrders();
+    displayReceiverOrders();
+    displayBuyerOrders();
+});
+
+// Função para Finalizar Pedido
+function finalizeOrder(orderNumber) {
+    if (getCurrentUser().role !== 'buyer') {
+        showNotification('Somente o Comprador pode concluir o pedido.', 'error');
+        return;
+    }
+
+    const orders = getOrders();
+    const orderIndex = orders.findIndex(o => o.numeroPedido === orderNumber);
+    if (orderIndex === -1) {
+        showNotification('Pedido não encontrado.', 'error');
+        return;
+    }
+
+    orders[orderIndex].status = OrderStatus.COMPLETED;
+    saveOrders(orders);
+
+    showNotification('Pedido concluído com sucesso!', 'success');
+    closeModal();
+    updateDashboardStats();
+    displayFinalizedOrders();
+    displayBuyerOrders();
+}
+
+// Funções de Formatação de Data
+function getCurrentDate() {
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, '0');
+    const month = String(today.getMonth() + 1).padStart(2, '0'); // Janeiro é 0!
+    const year = today.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
+function parseDate(dateStr) {
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) return new Date(0);
+    return new Date(parts[2], parts[1] - 1, parts[0]);
+}
+
+// Função de Logout
+document.getElementById('logout-btn').addEventListener('click', () => {
+    logoutUser();
+});
+
+// Funções de Login e Cadastro
+document.getElementById('open-register-modal').addEventListener('click', () => {
+    const registerModal = document.getElementById('register-modal');
+    registerModal.classList.remove('hidden');
+    const loginModal = document.getElementById('login-modal');
+    loginModal.classList.add('hidden');
+});
+
+document.getElementById('open-login-modal').addEventListener('click', () => {
+    const loginModal = document.getElementById('login-modal');
+    loginModal.classList.remove('hidden');
+    const registerModal = document.getElementById('register-modal');
+    registerModal.classList.add('hidden');
+});
+
+document.getElementById('close-login-modal').addEventListener('click', () => {
+    const loginModal = document.getElementById('login-modal');
+    loginModal.classList.add('hidden');
+});
+
+document.getElementById('close-register-modal').addEventListener('click', () => {
+    const registerModal = document.getElementById('register-modal');
+    registerModal.classList.add('hidden');
+});
+
+// Formulários de Login e Cadastro
+document.getElementById('register-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = document.getElementById('register-name').value.trim();
+    const email = document.getElementById('register-email').value.trim();
+    const password = document.getElementById('register-password').value;
+
+    if (!validateEmail(email)) {
+        showNotification('Por favor, insira um e-mail válido.', 'error');
+        return;
+    }
+
+    if (!validatePassword(password)) {
+        showNotification('A senha deve ter pelo menos 6 caracteres.', 'error');
+        return;
+    }
+
+    const success = registerUser(name, email, password);
+    if (success) {
+        document.getElementById('register-form').reset();
+        const registerModal = document.getElementById('register-modal');
+        registerModal.classList.add('hidden');
+        const loginModal = document.getElementById('login-modal');
+        loginModal.classList.remove('hidden');
+    }
+});
+
+document.getElementById('login-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+
+    const success = loginUser(email, password);
+    if (success) {
+        const loginModal = document.getElementById('login-modal');
+        loginModal.classList.add('hidden');
+        initializeApp();
+    }
+});
+
+// Validação de Formulários
+function validateEmail(email) {
+    const re = /\S+@\S+\.\S+/;
+    return re.test(email);
+}
+
+function validatePassword(password) {
+    return password.length >= 6;
+}
+
+// Inicialização do App após Login
+function initializeApp() {
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+        showLoginModal();
+        return;
+    }
+
+    // Atualizar perfil do usuário no header
+    const userProfile = document.getElementById('user-profile');
+    userProfile.querySelector('span').innerText = currentUser.name;
+
+    // Definir permissões de acordo com a role (futuro)
+    // Por enquanto, todas as funções estão disponíveis
+
+    // Atualizar Dashboard e outras abas
+    updateDashboardStats();
+    displayDashboard();
+    displayBuyerOrders();
+    displayReceiverOrders();
+    displayFinalizedOrders();
+    displayWithdrawalOrders();
+}
+
+// Mostrar Modal de Login se não estiver logado
+function showLoginModal() {
+    const loginModal = document.getElementById('login-modal');
+    if (loginModal) {
+        loginModal.classList.remove('hidden');
+    }
+}
+
+// Função para Atualizar Dashboard
+function getStatusCounts() {
+    const orders = getOrders();
+    const counts = {
+        pending: 0,
+        received: 0,
+        with_observations: 0,
+        completed: 0,
+        returned: 0
+    };
+
+    orders.forEach(order => {
+        if (counts[order.status] !== undefined) {
+            counts[order.status]++;
         }
     });
 
-    orders[orderIndex].globalObservation = globalObservation;
+    return counts;
+}
+
+function updateDashboardStats() {
+    const counts = getStatusCounts();
+    const pendingCountEl = document.getElementById('count-pending');
+    const receivedCountEl = document.getElementById('count-received');
+    const withObservationsCountEl = document.getElementById('count-with_observations');
+    const completedCountEl = document.getElementById('count-completed');
+    const returnedCountEl = document.getElementById('count-returned');
+
+    if (pendingCountEl) pendingCountEl.innerText = counts.pending;
+    if (receivedCountEl) receivedCountEl.innerText = counts.received;
+    if (withObservationsCountEl) withObservationsCountEl.innerText = counts.with_observations;
+    if (completedCountEl) completedCountEl.innerText = counts.completed;
+    if (returnedCountEl) returnedCountEl.innerText = counts.returned;
+
+    if (window.statusChartInstance) {
+        window.statusChartInstance.data.datasets[0].data = [
+            counts.pending,
+            counts.received,
+            counts.with_observations,
+            counts.completed,
+            counts.returned
+        ];
+        window.statusChartInstance.update();
+    }
+}
+
+function displayDashboard() {
+    updateDashboardStats();
+    const counts = getStatusCounts();
+    const ctx = document.getElementById('statusChart');
+    if (!ctx) return;
+
+    if (window.statusChartInstance) {
+        window.statusChartInstance.destroy();
+    }
+
+    window.statusChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pendente', 'Recebido', 'Com Observações', 'Concluído', 'Devolvido'],
+            datasets: [{
+                data: [counts.pending, counts.received, counts.with_observations, counts.completed, counts.returned],
+                backgroundColor: [
+                    '#FFC107',
+                    '#17A2B8',
+                    '#E67E22',
+                    '#27AE60',
+                    '#C0392B'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+}
+
+// Modal de Seleção de Área
+document.getElementById('select-area-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const areaSelect = document.getElementById('area-select');
+    let selectedArea = areaSelect.value;
+    if (selectedArea === 'Outra') {
+        const newAreaInput = document.getElementById('new-area');
+        selectedArea = newAreaInput.value.trim();
+        if (selectedArea) {
+            // Adicionar a nova área à lista e salvar no localStorage para futuras operações
+            AREAS.push(selectedArea.toUpperCase());
+            saveAreas();
+        } else {
+            showNotification('Por favor, insira a nova área.', 'error');
+            return;
+        }
+    }
+
+    const tempOrder = JSON.parse(localStorage.getItem('tempOrder'));
+    if (!tempOrder) {
+        showNotification('Erro ao obter o pedido temporário.', 'error');
+        closeModal();
+        return;
+    }
+
+    tempOrder.area = selectedArea;
+    tempOrder.status = OrderStatus.PENDING; // Atualizar status após seleção de área
+
+    const orders = getOrders();
+    orders.push(tempOrder);
+    saveOrders(orders);
+    showNotification('Pedido processado e salvo com sucesso!', 'success');
+    localStorage.removeItem('tempOrder');
+    closeModal();
+    updateDashboardStats();
+    displayBuyerOrders();
+    displayReceiverOrders();
+    displayFinalizedOrders();
+    displayWithdrawalOrders();
+});
+
+// Evento de Seleção de Área (Opcional)
+document.getElementById('select-area-form').addEventListener('change', (e) => {
+    const areaSelect = document.getElementById('area-select');
+    const newAreaGroup = document.getElementById('new-area-group');
+    if (areaSelect.value === 'Outra') {
+        newAreaGroup.classList.remove('hidden');
+        document.getElementById('new-area').required = true;
+    } else {
+        newAreaGroup.classList.add('hidden');
+        document.getElementById('new-area').required = false;
+    }
+});
+
+// Função para Exibir Modal de Seleção de Área
+function openSelectAreaModal(order) {
+    const selectAreaModal = document.getElementById('select-area-modal');
+    if (!selectAreaModal) return;
+
+    const areaSelect = document.getElementById('area-select');
+    const newAreaGroup = document.getElementById('new-area-group');
+
+    // Preencher as opções do select
+    areaSelect.innerHTML = '<option value="">Selecione uma área</option>';
+    AREAS.forEach(area => {
+        const option = document.createElement('option');
+        option.value = area;
+        option.text = area;
+        areaSelect.appendChild(option);
+    });
+
+    // Adicionar opção "Outra"
+    const otherOption = document.createElement('option');
+    otherOption.value = 'Outra';
+    otherOption.text = 'Outra';
+    areaSelect.appendChild(otherOption);
+
+    // Event Listener para mostrar campo de nova área
+    areaSelect.addEventListener('change', () => {
+        if (areaSelect.value === 'Outra') {
+            newAreaGroup.classList.remove('hidden');
+            document.getElementById('new-area').required = true;
+        } else {
+            newAreaGroup.classList.add('hidden');
+            document.getElementById('new-area').required = false;
+        }
+    });
+
+    selectAreaModal.classList.remove('hidden');
+}
+
+// Modal de Retirada
+document.getElementById('withdrawal-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const withdrawerNameInput = document.getElementById('withdrawer-name');
+    const withdrawerName = withdrawerNameInput.value.trim();
+    if (!withdrawerName) {
+        showNotification('Por favor, insira o nome do retirante.', 'error');
+        return;
+    }
+
+    const withdrawalModal = document.getElementById('withdrawal-modal');
+    const orderNumber = withdrawalModal.dataset.orderNumber;
+    const orders = getOrders();
+    const orderIndex = orders.findIndex(o => o.numeroPedido === orderNumber);
+    if (orderIndex === -1) {
+        showNotification('Pedido não encontrado.', 'error');
+        return;
+    }
+
+    orders[orderIndex].withdrawer = withdrawerName;
+    orders[orderIndex].withdrawalDate = getCurrentDate();
+    orders[orderIndex].status = OrderStatus.COMPLETED;
+    saveOrders(orders);
+
+    showNotification('Retirada confirmada e pedido concluído!', 'success');
+    withdrawalModal.classList.add('hidden');
+    updateDashboardStats();
+    displayWithdrawalOrders();
+    displayFinalizedOrders();
+    displayReceiverOrders();
+    displayBuyerOrders();
+});
+
+// Modal de Conferência (Simplificado sem quantidade recebida, flag e observação do item)
+document.getElementById('save-conference-btn').addEventListener('click', () => {
+    const modal = document.getElementById('modal');
+    const orderNumber = modal.dataset.orderNumber;
+    const nfFile = document.getElementById('nf-upload').files[0];
+    const boletoFile = document.getElementById('boleto-upload').files[0];
+    const globalObservationInput = document.getElementById('global-observation');
+
+    const orders = getOrders();
+    const orderIndex = orders.findIndex(o => o.numeroPedido === orderNumber);
+    if (orderIndex === -1) {
+        showNotification('Pedido não encontrado.', 'error');
+        return;
+    }
+
+    // Atualizar observação geral
+    orders[orderIndex].globalObservation = globalObservationInput.value.trim();
+
+    // Atualizar status para RECEIVED ou WITH_OBSERVATIONS
     orders[orderIndex].status = determineOrderStatus(orders[orderIndex]);
 
+    // Função para lidar com upload de arquivos
     function handleFileUpload(file, key) {
         return new Promise((resolve, reject) => {
             if (file) {
@@ -965,6 +1681,9 @@ document.getElementById('print-order-btn').addEventListener('click', () => {
         <h1>Pedido Nº ${order.numeroPedido}</h1>
         <p><strong>Fornecedor:</strong> ${order.nomeFornecedor}</p>
         <p><strong>CNPJ:</strong> ${order.cnpjFornecedor}</p>
+        <p><strong>Enviado Por:</strong> ${order.senderName}</p>
+        <p><strong>Data de Envio:</strong> ${order.sendDate}</p>
+        <p><strong>Área Destinada:</strong> ${order.area || 'Não definida'}</p>
         ${order.globalObservation ? `<p><strong>Observação do Pedido:</strong> ${order.globalObservation}</p>` : ''}
         <h3>Itens</h3>
         <table>
@@ -1010,29 +1729,177 @@ document.getElementById('print-order-btn').addEventListener('click', () => {
     newWindow.print();
 });
 
-function finalizeOrder(orderNumber) {
-    if (currentUser.role !== 'buyer') {
-        showNotification('Somente o Comprador pode concluir o pedido.', 'error');
+// Atualizar Informações do Usuário e Verificar Autenticação
+function initializeApp() {
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+        showLoginModal();
         return;
     }
 
-    const orders = getOrders();
-    const orderIndex = orders.findIndex(o => o.numeroPedido === orderNumber);
-    if (orderIndex === -1) {
-        showNotification('Pedido não encontrado.', 'error');
-        return;
-    }
+    // Atualizar perfil do usuário no header
+    const userProfile = document.getElementById('user-profile');
+    userProfile.querySelector('span').innerText = currentUser.name;
 
-    orders[orderIndex].status = OrderStatus.COMPLETED;
-    saveOrders(orders);
-
-    showNotification('Pedido concluído com sucesso!', 'success');
-    closeModal();
+    // Atualizar Dashboard e outras abas
     updateDashboardStats();
-    displayFinalizedOrders();
+    displayDashboard();
     displayBuyerOrders();
+    displayReceiverOrders();
+    displayFinalizedOrders();
+    displayWithdrawalOrders();
 }
 
+// Verificar se há um usuário logado na inicialização
+window.onload = function() {
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+        initializeApp();
+    } else {
+        showLoginModal();
+    }
+
+    // Inicializar seleção de área se necessário
+    // Inicializar outras funcionalidades
+};
+
+// Atualizar Dashboard e Abas ao Alterar Dados
+function updateDashboardStats() {
+    const counts = getStatusCounts();
+    const pendingCountEl = document.getElementById('count-pending');
+    const receivedCountEl = document.getElementById('count-received');
+    const withObservationsCountEl = document.getElementById('count-with_observations');
+    const completedCountEl = document.getElementById('count-completed');
+    const returnedCountEl = document.getElementById('count-returned');
+
+    if (pendingCountEl) pendingCountEl.innerText = counts.pending;
+    if (receivedCountEl) receivedCountEl.innerText = counts.received;
+    if (withObservationsCountEl) withObservationsCountEl.innerText = counts.with_observations;
+    if (completedCountEl) completedCountEl.innerText = counts.completed;
+    if (returnedCountEl) returnedCountEl.innerText = counts.returned;
+
+    if (window.statusChartInstance) {
+        window.statusChartInstance.data.datasets[0].data = [
+            counts.pending,
+            counts.received,
+            counts.with_observations,
+            counts.completed,
+            counts.returned
+        ];
+        window.statusChartInstance.update();
+    }
+}
+
+function getStatusCounts() {
+    const orders = getOrders();
+    const counts = {
+        pending: 0,
+        received: 0,
+        with_observations: 0,
+        completed: 0,
+        returned: 0
+    };
+
+    orders.forEach(order => {
+        if (counts[order.status] !== undefined) {
+            counts[order.status]++;
+        }
+    });
+
+    return counts;
+}
+
+function displayDashboard() {
+    updateDashboardStats();
+    const counts = getStatusCounts();
+    const ctx = document.getElementById('statusChart');
+    if (!ctx) return;
+
+    if (window.statusChartInstance) {
+        window.statusChartInstance.destroy();
+    }
+
+    window.statusChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pendente', 'Recebido', 'Com Observações', 'Concluído', 'Devolvido'],
+            datasets: [{
+                data: [counts.pending, counts.received, counts.with_observations, counts.completed, counts.returned],
+                backgroundColor: [
+                    '#FFC107',
+                    '#17A2B8',
+                    '#E67E22',
+                    '#27AE60',
+                    '#C0392B'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+}
+
+// Gestão de Seleção de Área
+document.getElementById('select-area-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const areaSelect = document.getElementById('area-select');
+    let selectedArea = areaSelect.value;
+    if (selectedArea === 'Outra') {
+        const newAreaInput = document.getElementById('new-area');
+        selectedArea = newAreaInput.value.trim();
+        if (selectedArea) {
+            // Adicionar a nova área à lista e salvar no localStorage para futuras operações
+            AREAS.push(selectedArea.toUpperCase());
+            saveAreas();
+        } else {
+            showNotification('Por favor, insira a nova área.', 'error');
+            return;
+        }
+    }
+
+    const tempOrder = JSON.parse(localStorage.getItem('tempOrder'));
+    if (!tempOrder) {
+        showNotification('Erro ao obter o pedido temporário.', 'error');
+        closeModal();
+        return;
+    }
+
+    tempOrder.area = selectedArea;
+    tempOrder.status = OrderStatus.PENDING; // Atualizar status após seleção de área
+
+    const orders = getOrders();
+    orders.push(tempOrder);
+    saveOrders(orders);
+    showNotification('Pedido processado e salvo com sucesso!', 'success');
+    localStorage.removeItem('tempOrder');
+    closeModal();
+    updateDashboardStats();
+    displayBuyerOrders();
+    displayReceiverOrders();
+    displayFinalizedOrders();
+    displayWithdrawalOrders();
+});
+
+// Carregar Áreas Salvas (Inclusão de áreas adicionadas)
+function loadAreas() {
+    const savedAreas = JSON.parse(localStorage.getItem('areas'));
+    if (savedAreas && Array.isArray(savedAreas)) {
+        AREAS.length = 0; // Limpar array
+        AREAS.push(...savedAreas);
+    }
+}
+
+// Salvar Áreas no LocalStorage
+function saveAreas() {
+    localStorage.setItem('areas', JSON.stringify(AREAS));
+}
+
+// Inicializar Áreas
+loadAreas();
+
+// Seleção de Área no Modal de Upload
 document.getElementById('process-pdf').addEventListener('click', () => {
     const fileInput = document.getElementById('pdf-upload');
     const file = fileInput.files[0];
@@ -1091,15 +1958,15 @@ document.getElementById('process-pdf').addEventListener('click', () => {
                     return;
                 }
 
-                orders.push(order);
-                saveOrders(orders);
+                const currentUser = getCurrentUser();
+                order.senderName = currentUser.name;
+                order.sendDate = getCurrentDate();
 
-                showNotification('Pedido processado e salvo com sucesso!', 'success');
-                fileInput.value = '';
-                updateDashboardStats();
-                displayBuyerOrders();
-                displayReceiverOrders();
-                displayFinalizedOrders();
+                // Abrir modal de seleção de área
+                openSelectAreaModal(order);
+
+                // Temporariamente armazenar o pedido antes da seleção de área
+                localStorage.setItem('tempOrder', JSON.stringify(order));
             });
         }).catch(error => {
             console.error('Erro ao processar o PDF:', error);
@@ -1110,36 +1977,211 @@ document.getElementById('process-pdf').addEventListener('click', () => {
     fileReader.readAsArrayBuffer(file);
 });
 
-const helpBtns = document.querySelectorAll('.icon-btn.tooltip');
-helpBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-        openHelpModal();
+// Eventos de Login e Cadastro
+document.getElementById('login-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+
+    const success = loginUser(email, password);
+    if (success) {
+        const loginModal = document.getElementById('login-modal');
+        loginModal.classList.add('hidden');
+        initializeApp();
+    }
+});
+
+document.getElementById('register-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = document.getElementById('register-name').value.trim();
+    const email = document.getElementById('register-email').value.trim();
+    const password = document.getElementById('register-password').value;
+
+    if (!validateEmail(email)) {
+        showNotification('Por favor, insira um e-mail válido.', 'error');
+        return;
+    }
+
+    if (!validatePassword(password)) {
+        showNotification('A senha deve ter pelo menos 6 caracteres.', 'error');
+        return;
+    }
+
+    const success = registerUser(name, email, password);
+    if (success) {
+        document.getElementById('register-form').reset();
+        const registerModal = document.getElementById('register-modal');
+        registerModal.classList.add('hidden');
+        const loginModal = document.getElementById('login-modal');
+        loginModal.classList.remove('hidden');
+    }
+});
+
+// Fechar Modais ao Clicar Fora
+window.onclick = function(event) {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        if (event.target === modal) {
+            modal.classList.add('hidden');
+        }
+    });
+};
+
+// Gestão de Logout
+document.getElementById('logout-btn').addEventListener('click', () => {
+    logoutUser();
+});
+
+// Atualizar Perfil do Usuário
+function updateUserProfile() {
+    const currentUser = getCurrentUser();
+    const userProfile = document.getElementById('user-profile');
+    if (currentUser) {
+        userProfile.querySelector('span').innerText = currentUser.name;
+    } else {
+        userProfile.querySelector('span').innerText = 'Usuário';
+    }
+}
+
+// Carregar Áreas Salvas
+function loadAreas() {
+    const savedAreas = JSON.parse(localStorage.getItem('areas'));
+    if (savedAreas && Array.isArray(savedAreas)) {
+        AREAS.length = 0; // Limpar array
+        AREAS.push(...savedAreas);
+    }
+}
+
+// Salvar Áreas no LocalStorage
+function saveAreas() {
+    localStorage.setItem('areas', JSON.stringify(AREAS));
+}
+
+// Inicializar Áreas
+loadAreas();
+
+// Implementação da Função para Conferência Simplificada
+document.getElementById('save-conference-btn').addEventListener('click', () => {
+    const modal = document.getElementById('modal');
+    const orderNumber = modal.dataset.orderNumber;
+    const nfFile = document.getElementById('nf-upload').files[0];
+    const boletoFile = document.getElementById('boleto-upload').files[0];
+    const globalObservationInput = document.getElementById('global-observation');
+
+    const orders = getOrders();
+    const orderIndex = orders.findIndex(o => o.numeroPedido === orderNumber);
+    if (orderIndex === -1) {
+        showNotification('Pedido não encontrado.', 'error');
+        return;
+    }
+
+    // Atualizar observação geral
+    orders[orderIndex].globalObservation = globalObservationInput.value.trim();
+
+    // Atualizar status para RECEIVED ou WITH_OBSERVATIONS
+    orders[orderIndex].status = determineOrderStatus(orders[orderIndex]);
+
+    // Função para lidar com upload de arquivos
+    function handleFileUpload(file, key) {
+        return new Promise((resolve, reject) => {
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    orders[orderIndex][key] = e.target.result;
+                    resolve();
+                };
+                reader.onerror = function (error) {
+                    console.error('Erro ao ler arquivo:', error);
+                    reject(error);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                resolve();
+            }
+        });
+    }
+
+    Promise.all([
+        handleFileUpload(nfFile, 'nfFile'),
+        handleFileUpload(boletoFile, 'boletoFile')
+    ])
+    .then(() => {
+        saveOrders(orders);
+        showNotification('Conferência salva com sucesso!', 'success');
+        closeModal();
+        updateDashboardStats();
+        displayReceiverOrders();
+        displayFinalizedOrders();
+        displayBuyerOrders();
+    })
+    .catch(() => {
+        showNotification('Erro ao processar arquivos.', 'error');
     });
 });
 
-function openHelpModal() {
-    const helpModal = document.getElementById('help-modal');
-    if (helpModal) {
-        helpModal.classList.remove('hidden');
+// Função de Carregamento Inicial
+window.onload = function() {
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+        initializeApp();
+    } else {
+        showLoginModal();
     }
-}
 
-function closeHelpModal() {
-    const helpModal = document.getElementById('help-modal');
-    if (helpModal) {
-        helpModal.classList.add('hidden');
+    feather.replace();
+};
+
+// Eventos para atualizar a lista após digitar ou alterar filtros:
+document.getElementById('buyer-search').addEventListener('input', displayBuyerOrders);
+document.getElementById('buyer-status-filter').addEventListener('change', displayBuyerOrders);
+
+document.getElementById('receiver-search').addEventListener('input', displayReceiverOrders);
+document.getElementById('receiver-pending-filter').addEventListener('change', displayReceiverOrders);
+
+document.getElementById('finalized-search').addEventListener('input', displayFinalizedOrders);
+document.getElementById('finalized-status-filter').addEventListener('change', displayFinalizedOrders);
+
+document.getElementById('withdrawal-search').addEventListener('input', displayWithdrawalOrders);
+
+// Implementar Modal de Retirada
+document.getElementById('withdrawal-modal').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const withdrawerNameInput = document.getElementById('withdrawer-name');
+    const withdrawerName = withdrawerNameInput.value.trim();
+    if (!withdrawerName) {
+        showNotification('Por favor, insira o nome do retirante.', 'error');
+        return;
     }
-}
 
-const helpCloseButtons = document.querySelectorAll('#help-modal .close-btn');
-helpCloseButtons.forEach(button => {
-    button.addEventListener('click', closeHelpModal);
+    const withdrawalModal = document.getElementById('withdrawal-modal');
+    const orderNumber = withdrawalModal.dataset.orderNumber;
+    const orders = getOrders();
+    const orderIndex = orders.findIndex(o => o.numeroPedido === orderNumber);
+    if (orderIndex === -1) {
+        showNotification('Pedido não encontrado.', 'error');
+        return;
+    }
+
+    orders[orderIndex].withdrawer = withdrawerName;
+    orders[orderIndex].withdrawalDate = getCurrentDate();
+    orders[orderIndex].status = OrderStatus.COMPLETED;
+    saveOrders(orders);
+
+    showNotification('Retirada confirmada e pedido concluído!', 'success');
+    withdrawalModal.classList.add('hidden');
+    updateDashboardStats();
+    displayWithdrawalOrders();
+    displayFinalizedOrders();
+    displayReceiverOrders();
+    displayBuyerOrders();
 });
 
+// Funções de Navegação de Seções
 const buyerBtn = document.getElementById('buyer-btn');
 const receiverBtn = document.getElementById('receiver-btn');
 const finalizedBtn = document.getElementById('finalized-btn');
 const dashboardBtn = document.getElementById('dashboard-btn');
+const withdrawalBtn = document.getElementById('withdrawal-btn'); // Adicionar botão de retirada no sidebar
 
 if (dashboardBtn) {
     dashboardBtn.addEventListener('click', () => {
@@ -1173,6 +2215,30 @@ if (finalizedBtn) {
     });
 }
 
+// Adicionar Botão de Retirada no Sidebar (Se ainda não existir)
+(function addWithdrawalButton() {
+    const navMenu = document.querySelector('.nav-menu ul');
+    const withdrawalBtnExists = document.getElementById('withdrawal-btn');
+    if (!withdrawalBtnExists) {
+        const li = document.createElement('li');
+        li.className = 'nav-item';
+        li.innerHTML = `
+            <button id="withdrawal-btn" class="nav-btn" aria-label="Retirada">
+                <i data-feather="truck"></i>
+                <span>Retirada</span>
+            </button>
+        `;
+        navMenu.appendChild(li);
+
+        const newWithdrawalBtn = document.getElementById('withdrawal-btn');
+        newWithdrawalBtn.addEventListener('click', () => {
+            setActiveSection('withdrawal-section');
+            setActiveNav('withdrawal-btn');
+            displayWithdrawalOrders();
+        });
+    }
+})();
+
 function setActiveSection(sectionId) {
     const sections = document.querySelectorAll('main .sections-wrapper section');
     sections.forEach(section => {
@@ -1198,110 +2264,15 @@ function setActiveNav(btnId) {
     });
 }
 
-function getStatusCounts() {
+// Função para Atualizar Status dos Pedidos e Dashboard
+function updateOrderStatus(orderNumber) {
     const orders = getOrders();
-    const counts = {
-        pending: 0,
-        received: 0,
-        with_observations: 0,
-        completed: 0,
-        returned: 0
-    };
+    const orderIndex = orders.findIndex(o => o.numeroPedido === orderNumber);
+    if (orderIndex === -1) return;
 
-    orders.forEach(order => {
-        if (counts[order.status] !== undefined) {
-            counts[order.status]++;
-        }
-    });
-
-    return counts;
-}
-
-function updateDashboardStats() {
-    const counts = getStatusCounts();
-    const pendingCountEl = document.getElementById('count-pending');
-    const receivedCountEl = document.getElementById('count-received');
-    const withObservationsCountEl = document.getElementById('count-with_observations');
-    const completedCountEl = document.getElementById('count-completed');
-    const returnedCountEl = document.getElementById('count-returned');
-
-    if (pendingCountEl) pendingCountEl.innerText = counts.pending;
-    if (receivedCountEl) receivedCountEl.innerText = counts.received;
-    if (withObservationsCountEl) withObservationsCountEl.innerText = counts.with_observations;
-    if (completedCountEl) completedCountEl.innerText = counts.completed;
-    if (returnedCountEl) returnedCountEl.innerText = counts.returned;
-
-    if (window.statusChartInstance) {
-        window.statusChartInstance.data.datasets[0].data = [
-            counts.pending,
-            counts.received,
-            counts.with_observations,
-            counts.completed,
-            counts.returned
-        ];
-        window.statusChartInstance.update();
-    }
-}
-
-function displayDashboard() {
+    orders[orderIndex].status = determineOrderStatus(orders[orderIndex]);
+    saveOrders(orders);
     updateDashboardStats();
-    const counts = getStatusCounts();
-    const ctx = document.getElementById('statusChart');
-    if (!ctx) return;
-
-    if (window.statusChartInstance) {
-        window.statusChartInstance.destroy();
-    }
-
-    window.statusChartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Pendente', 'Recebido', 'Com Observações', 'Concluído', 'Devolvido'],
-            datasets: [{
-                data: [counts.pending, counts.received, counts.with_observations, counts.completed, counts.returned],
-                backgroundColor: [
-                    '#FFC107',
-                    '#17A2B8',
-                    '#E67E22',
-                    '#27AE60',
-                    '#C0392B'
-                ]
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
-        }
-    });
 }
 
-window.onload = function() {
-    const dashboardSection = document.getElementById('dashboard-section');
-    if (dashboardSection && document.getElementById('dashboard-btn')) {
-        setActiveSection('dashboard-section');
-        setActiveNav('dashboard-btn');
-        displayDashboard();
-    } else {
-        setActiveSection('buyer-section');
-        setActiveNav('buyer-btn');
-        displayBuyerOrders();
-    }
 
-    updateDashboardStats();
-    displayReceiverOrders();
-    displayFinalizedOrders();
-
-    if (typeof feather !== 'undefined') {
-        feather.replace();
-    }
-};
-
-// Eventos para atualizar a lista após digitar ou alterar filtros:
-document.getElementById('buyer-search').addEventListener('input', displayBuyerOrders);
-document.getElementById('buyer-status-filter').addEventListener('change', displayBuyerOrders);
-
-document.getElementById('receiver-search').addEventListener('input', displayReceiverOrders);
-document.getElementById('receiver-pending-filter').addEventListener('change', displayReceiverOrders);
-
-document.getElementById('finalized-search').addEventListener('input', displayFinalizedOrders);
-document.getElementById('finalized-status-filter').addEventListener('change', displayFinalizedOrders);
