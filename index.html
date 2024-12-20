@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>Sistema de Controle de Pedidos - Senac</title>
   <link rel="stylesheet" href="css/styles.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link 
     href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" 
     rel="stylesheet">
@@ -57,7 +56,7 @@
   
   <!-- Modal de Seleção de Área -->
   <div id="select-area-modal" class="modal hidden">
-    <div class="modal-content">
+    <div class="modal-content area-modal-content">
       <span class="close-btn" id="close-select-area-modal"><i data-feather="x"></i></span>
       <h2>Selecionar Área Destinada</h2>
       <form id="select-area-form">
@@ -68,7 +67,6 @@
         <div class="form-group">
           <label for="area-select">Área:</label>
           <select id="area-select" required>
-            <option value="">Selecione uma área</option>
             <!-- Opções serão preenchidas via JavaScript -->
           </select>
         </div>
@@ -80,18 +78,6 @@
       </form>
     </div>
   </div>
-  <!-- Modal de Confirmação -->
-<div id="confirmation-modal" class="modal hidden">
-  <div class="modal-content">
-    <span class="close-btn"><i data-feather="x"></i></span>
-    <h2>Confirmar Ação</h2>
-    <p>Tem certeza que deseja salvar a conferência? Esta ação não pode ser desfeita.</p>
-    <div class="modal-actions">
-      <button id="confirm-save-conference" class="action-btn primary-action">Confirmar</button>
-      <button id="cancel-save-conference" class="action-btn">Cancelar</button>
-    </div>
-  </div>
-</div>
 
   <!-- Modal de Conferência de Pedido -->
   <div id="modal" class="modal hidden">
@@ -150,7 +136,48 @@
         </div>
     </div>
   </div>
-  
+
+  <!-- Modal de Confirmação da Conferência -->
+  <div id="confirmation-modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close-btn"><i data-feather="x"></i></span>
+      <h2>Confirmar Ação</h2>
+      <p>Tem certeza que deseja salvar a conferência? Esta ação não pode ser desfeita.</p>
+      <div class="modal-actions">
+        <button id="confirm-save-conference" class="action-btn primary-action">Confirmar</button>
+        <button id="cancel-save-conference" class="action-btn">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Retirada -->
+  <div id="withdrawal-modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close-btn"><i data-feather="x"></i></span>
+      <h2>Confirmar Retirada</h2>
+      <div class="form-group">
+        <label for="withdrawer-name">Nome do Retirante:</label>
+        <input type="text" id="withdrawer-name" required placeholder="Digite para buscar ou inserir novo nome">
+        <ul id="withdrawer-suggestions" class="suggestions-list"></ul>
+      </div>
+      <button id="confirm-withdrawal-btn" class="action-btn">Confirmar</button>
+    </div>
+  </div>
+
+  <!-- Modal de Avisar Requisitante -->
+  <div id="notify-requester-modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close-btn"><i data-feather="x"></i></span>
+      <h2>Avisar Requisitante</h2>
+      <p>Insira o nome do requisitante a ser notificado:</p>
+      <div class="form-group">
+        <label for="requester-name">Nome do Requisitante:</label>
+        <input type="text" id="requester-name" required placeholder="Digite o nome do requisitante">
+      </div>
+      <button id="send-requester-notification" class="action-btn">Enviar Notificação</button>
+    </div>
+  </div>
+
   <!-- Modal de Ajuda -->
   <div id="help-modal" class="modal hidden">
     <div class="modal-content">
@@ -160,29 +187,19 @@
         <p>Para usar o sistema, siga as instruções abaixo:</p>
         <ul>
           <li><strong>Dashboard:</strong> Veja a visão geral dos pedidos.</li>
-          <li><strong>Comprador:</strong> Faça upload do PDF do pedido, confira o status e conclua se necessário.</li>
-          <li><strong>Recebimento:</strong> Confira itens pendentes, marque como recebido e adicione observações, fazendo upload da Nota Fiscal e Boleto.</li>
-          <li><strong>Finalizados:</strong> Veja pedidos concluídos ou devolvidos.</li>
+          <li><strong>Comprador:</strong> Faça upload do PDF do pedido, confira o status e conclua se necessário. Você também pode avisar o requisitante.</li>
+          <li><strong>Recebimento:</strong> Confira itens pendentes, marque como recebido/adicione observação global e faça upload da Nota Fiscal e Boleto.</li>
+          <li><strong>Finalizados:</strong> Veja pedidos concluídos.</li>
           <li><strong>Retirada:</strong> Confirme a retirada dos pedidos, inserindo o nome do retirante.</li>
         </ul>
         <p>Em caso de dúvidas, entre em contato com o suporte.</p>
       </div>
     </div>
   </div>
-  
-  <!-- Modal de Retirada -->
-  <div id="withdrawal-modal" class="modal hidden">
-    <div class="modal-content">
-      <span class="close-btn"><i data-feather="x"></i></span>
-      <h2>Confirmar Retirada</h2>
-      <form id="withdrawal-form">
-        <div class="form-group">
-          <label for="withdrawer-name">Nome do Retirante:</label>
-          <input type="text" id="withdrawer-name" required>
-        </div>
-        <button type="submit" class="action-btn">Confirmar</button>
-      </form>
-    </div>
+
+  <!-- Loader -->
+  <div id="loader" class="loader hidden">
+    <div class="spinner"></div>
   </div>
   
   <!-- Contêiner de Notificações -->
@@ -214,7 +231,6 @@
               <span>Recebimento</span>
             </button>
           </li>
-          <!-- "Retirada" já está incluído diretamente no HTML -->
           <li class="nav-item">
             <button id="withdrawal-btn" class="nav-btn" aria-label="Retirada">
               <i data-feather="truck"></i>
@@ -271,33 +287,23 @@
               <div class="status-cards">
                 <div class="status-card status-pending-status">
                   <h3 id="count-pending">0</h3>
-                  <p>
-                    <span class="status-icon"></span>Pendentes
-                  </p>
+                  <p>Pendentes</p>
                 </div>
                 <div class="status-card status-received-status">
                   <h3 id="count-received">0</h3>
-                  <p>
-                    <span class="status-icon"></span>Recebidos
-                  </p>
+                  <p>Recebidos</p>
                 </div>
                 <div class="status-card status-with_observations-status">
                   <h3 id="count-with_observations">0</h3>
-                  <p>
-                    <span class="status-icon"></span>Com Observações
-                  </p>
+                  <p>Com Observações</p>
                 </div>
                 <div class="status-card status-completed-status">
                   <h3 id="count-completed">0</h3>
-                  <p>
-                    <span class="status-icon"></span>Concluídos
-                  </p>
+                  <p>Concluídos</p>
                 </div>
                 <div class="status-card status-returned-status">
                   <h3 id="count-returned">0</h3>
-                  <p>
-                    <span class="status-icon"></span>Devolvidos
-                  </p>
+                  <p>Devolvidos</p>
                 </div>
               </div>
               <!-- Área para gráficos -->
@@ -332,7 +338,7 @@
             <!-- Barra de pesquisa e filtro -->
             <div class="search-filter-container">
               <div class="search-wrapper">
-                <input type="text" id="buyer-search" class="search-input" placeholder="Pesquisar por número, fornecedor ou CNPJ" aria-label="Pesquisar pedidos">
+                <input type="text" id="buyer-search" class="search-input" placeholder="Pesquisar por número, fornecedor, CNPJ, área, etc." aria-label="Pesquisar pedidos">
               </div>
               <div class="filter-wrapper">
                 <label for="buyer-status-filter" class="filter-label">Filtrar:</label>
@@ -341,6 +347,7 @@
                   <option value="pending">Pendente</option>
                   <option value="received">Recebido</option>
                   <option value="with_observations">Com Observações</option>
+                  <option value="ready_for_pickup">Pronto para Retirada</option>
                   <option value="completed">Concluído</option>
                   <option value="returned">Devolvido</option>
                 </select>
@@ -364,7 +371,7 @@
             </div>
             <div class="search-filter-container">
               <div class="search-wrapper">
-                <input type="text" id="receiver-search" class="search-input" placeholder="Pesquisar por número, fornecedor, CNPJ ou descrição" aria-label="Pesquisar pedidos pendentes">
+                <input type="text" id="receiver-search" class="search-input" placeholder="Pesquisar por número, fornecedor, CNPJ, área, etc." aria-label="Pesquisar pedidos pendentes">
               </div>
               <div class="filter-wrapper">
                 <label for="receiver-pending-filter" class="filter-label">Mostrar:</label>
@@ -373,6 +380,7 @@
                   <option value="pending">Pendentes</option>
                   <option value="received">Recebidos</option>
                   <option value="with_observations">Com Observações</option>
+                  <option value="ready_for_pickup">Pronto para Retirada</option>
                   <option value="completed">Concluídos</option>
                   <option value="returned">Devolvidos</option>
                 </select>
@@ -395,7 +403,7 @@
             </div>
             <div class="search-filter-container">
               <div class="search-wrapper">
-                <input type="text" id="finalized-search" class="search-input" placeholder="Pesquisar por número, fornecedor, CNPJ ou descrição" aria-label="Pesquisar pedidos finalizados">
+                <input type="text" id="finalized-search" class="search-input" placeholder="Pesquisar por número, fornecedor, CNPJ, área, etc." aria-label="Pesquisar pedidos finalizados">
               </div>
               <div class="filter-wrapper">
                 <label for="finalized-status-filter" class="filter-label">Filtrar:</label>
@@ -424,7 +432,7 @@
             </div>
             <div class="search-filter-container">
               <div class="search-wrapper">
-                <input type="text" id="withdrawal-search" class="search-input" placeholder="Pesquisar por número, fornecedor, CNPJ ou descrição" aria-label="Pesquisar pedidos para retirada">
+                <input type="text" id="withdrawal-search" class="search-input" placeholder="Pesquisar por número, fornecedor, CNPJ, área, etc." aria-label="Pesquisar pedidos para retirada">
               </div>
             </div>
             <h3 class="section-title">Pedidos para Retirada</h3>
@@ -435,47 +443,10 @@
         </div>
       </main>
       
-      <!-- Modal de Ajuda -->
-      <div id="help-modal" class="modal hidden">
-        <div class="modal-content">
-          <span class="close-btn"><i data-feather="x"></i></span>
-          <h2>Ajuda</h2>
-          <div id="help-content">
-            <p>Para usar o sistema, siga as instruções abaixo:</p>
-            <ul>
-              <li><strong>Dashboard:</strong> Veja a visão geral dos pedidos.</li>
-              <li><strong>Comprador:</strong> Faça upload do PDF do pedido, confira o status e conclua se necessário.</li>
-              <li><strong>Recebimento:</strong> Confira itens pendentes, marque como recebido e adicione observações, fazendo upload da Nota Fiscal e Boleto.</li>
-              <li><strong>Finalizados:</strong> Veja pedidos concluídos ou devolvidos.</li>
-              <li><strong>Retirada:</strong> Confirme a retirada dos pedidos, inserindo o nome do retirante.</li>
-            </ul>
-            <p>Em caso de dúvidas, entre em contato com o suporte.</p>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Modal de Retirada -->
-      <div id="withdrawal-modal" class="modal hidden">
-        <div class="modal-content">
-          <span class="close-btn"><i data-feather="x"></i></span>
-          <h2>Confirmar Retirada</h2>
-          <form id="withdrawal-form">
-            <div class="form-group">
-              <label for="withdrawer-name">Nome do Retirante:</label>
-              <input type="text" id="withdrawer-name" required>
-            </div>
-            <button type="submit" class="action-btn">Confirmar</button>
-          </form>
-        </div>
-      </div>
-      
-      <!-- Contêiner de Notificações -->
-      <div id="notification-container"></div>
-      
       <!-- Scripts -->
       <script src="libs/pdfjs/pdf.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-      <script src="js/app.js"></script>
+      <script type="module" src="js/app.js"></script>
       <script>
         feather.replace();
       </script>
