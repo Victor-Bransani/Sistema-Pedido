@@ -9,7 +9,7 @@ export const OrderStatus = {
 
 export const RETURN_KEYWORDS = ['devolvido', 'retorno', 'volta', 'reembolso'];
 
-let AREAS = [
+export const DEFAULT_AREAS = [
     'BIBLIOTECA',
     'SECRETARIA',
     'ENFERMAGEM',
@@ -35,11 +35,3 @@ let AREAS = [
     'BEM-ESTAR',
     'APRENDIZAGEM'
 ];
-
-export function getAreas() {
-    return AREAS;
-}
-
-export function setAreas(newAreas) {
-    AREAS = newAreas;
-}

@@ -1,9 +1,9 @@
-import {setAreas} from './constants.js';
-
 export function loadAreas() {
-    const savedAreas = JSON.parse(localStorage.getItem('areas'));
-    if (savedAreas && Array.isArray(savedAreas)) {
-        setAreas(savedAreas);
+    try {
+        const savedAreas = JSON.parse(localStorage.getItem('areas'));
+        return Array.isArray(savedAreas) ? savedAreas : [];
+    } catch {
+        return [];
     }
 }
 

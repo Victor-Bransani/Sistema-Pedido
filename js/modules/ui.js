@@ -1,11 +1,17 @@
-import {showNotification} from './notifications.js';
-import {getCurrentUser, getOrders, saveOrders, getWithdrawers, saveWithdrawers, saveAreas, getAreas} from './storage.js';
-import {parseDate, getCurrentDate, validateEmail, validatePassword, normalizeString} from './utils.js';
-import {OrderStatus} from './constants.js';
-import {determineOrderStatus, formatStatus, getStatusIcon, formatCNPJ, extractOrderData, cleanDescription, cleanExtraParts, splitLineAtNewItemPattern, isPageHeaderOrFooter} from './orders.js';
+import { showNotification } from './notifications.js';
+import { getCurrentUser, getOrders, saveOrders, getWithdrawers, saveWithdrawers, saveAreas, loadAreas } from './storage.js';
+import { parseDate, getCurrentDate, normalizeString } from './utils.js';
+import { OrderStatus, DEFAULT_AREAS } from './constants.js';
+import { determineOrderStatus, formatStatus, getStatusIcon, formatCNPJ } from './orders.js';
 
-let AREAS = getAreas();
+// Inicializa AREAS com base no localStorage ou DEFAULT_AREAS
+let AREAS = loadAreas();
+if (!Array.isArray(AREAS) || AREAS.length === 0) {
+    AREAS = [...DEFAULT_AREAS]; // Usa as áreas padrão se não houver nada no localStorage
+    saveAreas(AREAS); // Salva as áreas padrão no localStorage
+}
 
+// Funções de utilidade para manipulação do DOM
 export function showLoader() {
     const loader = document.getElementById('loader');
     if (loader) loader.classList.remove('hidden');
@@ -17,22 +23,21 @@ export function hideLoader() {
 }
 
 export function closeModal() {
-    const modals = document.querySelectorAll('.modal');
-    modals.forEach(modal => modal.classList.add('hidden'));
+    document.querySelectorAll('.modal').forEach(modal => modal.classList.add('hidden'));
 }
 
+// Atualiza o perfil do usuário na interface
 export function updateUserProfile() {
     const currentUser = getCurrentUser();
     const userProfile = document.getElementById('user-profile');
-    if (currentUser) {
-        userProfile.querySelector('span').innerText = currentUser.name;
-    } else {
-        userProfile.querySelector('span').innerText = 'Usuário';
+    if (userProfile) {
+        userProfile.querySelector('span').innerText = currentUser ? currentUser.name : 'Usuário';
     }
 }
 
+// Calcula contagens de status para o dashboard
 function getStatusCounts() {
-    const orders = getOrders();
+    const orders = getOrders() || [];
     const counts = {
         pending: 0,
         received: 0,
@@ -42,7 +47,7 @@ function getStatusCounts() {
     };
 
     orders.forEach(order => {
-        if (counts[order.status] !== undefined) {
+        if (order.status in counts) {
             counts[order.status]++;
         }
     });
@@ -50,19 +55,21 @@ function getStatusCounts() {
     return counts;
 }
 
+// Atualiza estatísticas do dashboard
 export function updateDashboardStats() {
     const counts = getStatusCounts();
-    const pendingCountEl = document.getElementById('count-pending');
-    const receivedCountEl = document.getElementById('count-received');
-    const withObservationsCountEl = document.getElementById('count-with_observations');
-    const completedCountEl = document.getElementById('count-completed');
-    const returnedCountEl = document.getElementById('count-returned');
+    const elements = {
+        'count-pending': counts.pending,
+        'count-received': counts.received,
+        'count-with_observations': counts.with_observations,
+        'count-completed': counts.completed,
+        'count-returned': counts.returned
+    };
 
-    if (pendingCountEl) pendingCountEl.innerText = counts.pending;
-    if (receivedCountEl) receivedCountEl.innerText = counts.received;
-    if (withObservationsCountEl) withObservationsCountEl.innerText = counts.with_observations;
-    if (completedCountEl) completedCountEl.innerText = counts.completed;
-    if (returnedCountEl) returnedCountEl.innerText = counts.returned;
+    Object.entries(elements).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) element.innerText = value;
+    });
 
     if (window.statusChartInstance) {
         window.statusChartInstance.data.datasets[0].data = [
@@ -76,6 +83,7 @@ export function updateDashboardStats() {
     }
 }
 
+// Exibe o dashboard com gráfico de status
 export function displayDashboard() {
     updateDashboardStats();
     const counts = getStatusCounts();
@@ -92,13 +100,7 @@ export function displayDashboard() {
             labels: ['Pendente', 'Recebido', 'Com Observações', 'Concluído', 'Devolvido'],
             datasets: [{
                 data: [counts.pending, counts.received, counts.with_observations, counts.completed, counts.returned],
-                backgroundColor: [
-                    '#FFC107',
-                    '#17A2B8',
-                    '#E67E22',
-                    '#27AE60',
-                    '#C0392B'
-                ]
+                backgroundColor: ['#FFC107', '#17A2B8', '#E67E22', '#27AE60', '#C0392B']
             }]
         },
         options: {
@@ -108,78 +110,62 @@ export function displayDashboard() {
     });
 }
 
+// Verifica se um pedido corresponde ao termo de busca
 function orderMatchesSearch(order, searchValue) {
     const normSearch = normalizeString(searchValue);
+    const fields = [
+        order.numeroPedido,
+        order.nomeFornecedor,
+        order.cnpjFornecedor,
+        order.globalObservation || '',
+        order.area || '',
+        order.senderName || '',
+        order.receiverName || '',
+        order.withdrawer || ''
+    ];
 
-    const normNumeroPedido = normalizeString(order.numeroPedido);
-    const normNomeFornecedor = normalizeString(order.nomeFornecedor);
-    const normCnpjFornecedor = normalizeString(order.cnpjFornecedor);
-    const normGlobalObs = normalizeString(order.globalObservation || '');
-    const normArea = normalizeString(order.area || '');
-    const normSenderName = normalizeString(order.senderName || '');
-    const normReceiverName = normalizeString(order.receiverName || '');
-    const normWithdrawer = normalizeString(order.withdrawer || '');
+    if (fields.some(field => normalizeString(field).includes(normSearch))) return true;
 
-    if (normNumeroPedido.includes(normSearch)) return true;
-    if (normNomeFornecedor.includes(normSearch)) return true;
-    if (normCnpjFornecedor.includes(normSearch)) return true;
-    if (normGlobalObs.includes(normSearch)) return true;
-    if (normArea.includes(normSearch)) return true;
-    if (normSenderName.includes(normSearch)) return true;
-    if (normReceiverName.includes(normSearch)) return true;
-    if (normWithdrawer.includes(normSearch)) return true;
-
-    for (let item of order.itens) {
-        const normDesc = normalizeString(item.description);
-        const normCode = normalizeString(item.code);
-        if (normDesc.includes(normSearch) || normCode.includes(normSearch)) {
-            return true;
-        }
-    }
-
-    return false;
+    return (order.itens || []).some(item =>
+        normalizeString(item.description).includes(normSearch) ||
+        normalizeString(item.code).includes(normSearch)
+    );
 }
 
+// Exibe pedidos na seção de comprador
 export function displayBuyerOrders() {
-    const buyerOrdersContainer = document.getElementById('buyer-orders-container');
-    if (!buyerOrdersContainer) return;
+    const container = document.getElementById('buyer-orders-container');
+    if (!container) return;
 
-    buyerOrdersContainer.innerHTML = '';
+    container.innerHTML = '';
 
     const searchInput = document.getElementById('buyer-search');
     const statusFilter = document.getElementById('buyer-status-filter');
-
     if (!searchInput || !statusFilter) return;
 
+    let orders = getOrders() || [];
     const searchValue = searchInput.value;
     const selectedStatus = statusFilter.value;
-    let orders = getOrders();
 
     if (selectedStatus !== 'all') {
         orders = orders.filter(order => order.status === selectedStatus);
     }
 
     const filteredOrders = orders.filter(order => orderMatchesSearch(order, searchValue));
-
     if (filteredOrders.length === 0) {
-        buyerOrdersContainer.innerHTML = '<p>Nenhum pedido encontrado.</p>';
+        container.innerHTML = '<p>Nenhum pedido encontrado.</p>';
         return;
     }
 
-    filteredOrders.sort((a, b) => {
-        const dateA = parseDate(a.sendDate);
-        const dateB = parseDate(b.sendDate);
-        return dateB - dateA;
-    });
+    filteredOrders.sort((a, b) => parseDate(b.sendDate) - parseDate(a.sendDate));
 
     const currentUser = getCurrentUser();
-
     filteredOrders.forEach(order => {
         const itens = Array.isArray(order.itens) ? order.itens : [];
         const totalValue = itens.reduce((acc, item) => {
-            const q = (typeof item.quantity === 'number') ? item.quantity : 0;
-            const p = (typeof item.unitPrice === 'number') ? item.unitPrice : 0;
-            return acc + (q * p);
+            const qty = Number(item.quantity) || 0;
+            const price = Number(item.unitPrice) || 0;
+            return acc + (qty * price);
         }, 0).toFixed(2);
 
         const orderCard = document.createElement('div');
@@ -188,7 +174,7 @@ export function displayBuyerOrders() {
             <h3>Pedido Nº ${order.numeroPedido}</h3>
             <div class="order-details">
                 <p><strong>Fornecedor:</strong> ${order.nomeFornecedor}</p>
-                <p><strong>CNPJ:</strong> ${order.cnpjFornecedor}</p>
+                <p><strong>CNPJ:</strong> ${formatCNPJ(order.cnpjFornecedor)}</p>
                 <p><strong>Área Destinada:</strong> ${order.area || 'Não definida'}</p>
                 <p><strong>Enviado Por:</strong> ${order.senderName} em ${order.sendDate}</p>
                 ${order.receiveDate ? `<p><strong>Recebido Por:</strong> ${order.receiverName} em ${order.receiveDate}</p>` : ''}
@@ -205,9 +191,10 @@ export function displayBuyerOrders() {
                 ${
                     currentUser && currentUser.role === 'user' && 
                     (order.status === OrderStatus.RECEIVED || order.status === OrderStatus.WITH_OBSERVATIONS) 
-                    ? `<button class="finalizar-pedido-btn"><i data-feather="check"></i> Concluir (Pronto p/ Retirada)</button>
-                       <button class="action-btn" data-action="notify-requester"><i data-feather="send"></i> Avisar Requisitante</button>`
-                    : ''
+                    ? `
+                        <button class="finalizar-pedido-btn"><i data-feather="check"></i> Concluir (Pronto p/ Retirada)</button>
+                        <button class="action-btn" data-action="notify-requester"><i data-feather="send"></i> Avisar Requisitante</button>
+                    ` : ''
                 }
             </div>
             <div class="items-list" style="display: none;">
@@ -225,19 +212,19 @@ export function displayBuyerOrders() {
                     </thead>
                     <tbody>
                         ${itens.map(item => {
-                            const qty = (typeof item.quantity === 'number') ? item.quantity : 0;
-                            const uPrice = (typeof item.unitPrice === 'number') ? item.unitPrice : 0;
+                            const qty = Number(item.quantity) || 0;
+                            const uPrice = Number(item.unitPrice) || 0;
                             const tPrice = (qty * uPrice).toFixed(2);
                             return `
-                            <tr>
-                                <td>${item.lineNumber || '-'}</td>
-                                <td>${item.code || '-'}</td>
-                                <td>${item.description || '-'}</td>
-                                <td>${qty}</td>
-                                <td>${item.unit || '-'}</td>
-                                <td>R$ ${!isNaN(uPrice) ? uPrice.toFixed(2) : '0.00'}</td>
-                                <td>R$ ${!isNaN(qty) && !isNaN(uPrice) ? tPrice : '0.00'}</td>
-                            </tr>`;
+                                <tr>
+                                    <td>${item.lineNumber || '-'}</td>
+                                    <td>${item.code || '-'}</td>
+                                    <td>${item.description || '-'}</td>
+                                    <td>${qty}</td>
+                                    <td>${item.unit || '-'}</td>
+                                    <td>R$ ${uPrice.toFixed(2)}</td>
+                                    <td>R$ ${tPrice}</td>
+                                </tr>`;
                         }).join('')}
                         <tr class="total-row">
                             <td colspan="5"><strong>Total:</strong></td>
@@ -248,34 +235,30 @@ export function displayBuyerOrders() {
             </div>
         `;
 
-        buyerOrdersContainer.appendChild(orderCard);
+        container.appendChild(orderCard);
 
-        const visualizarBtn = orderCard.querySelector('.visualizar-itens-btn');
-        visualizarBtn.addEventListener('click', () => {
+        orderCard.querySelector('.visualizar-itens-btn').addEventListener('click', () => {
             const itemsList = orderCard.querySelector('.items-list');
             itemsList.style.display = itemsList.style.display === 'none' ? 'block' : 'none';
         });
 
         const finalizarBtn = orderCard.querySelector('.finalizar-pedido-btn');
         if (finalizarBtn) {
-            finalizarBtn.addEventListener('click', () => {
-                finalizeOrderForPickup(order.numeroPedido);
-            });
+            finalizarBtn.addEventListener('click', () => finalizeOrderForPickup(order.numeroPedido));
         }
 
         const notifyBtn = orderCard.querySelector('[data-action="notify-requester"]');
         if (notifyBtn) {
-            notifyBtn.addEventListener('click', () => {
-                openNotifyRequesterModal(order.numeroPedido);
-            });
+            notifyBtn.addEventListener('click', () => openNotifyRequesterModal(order.numeroPedido));
         }
     });
 
     feather.replace();
 }
 
+// Marca um pedido como pronto para retirada
 function finalizeOrderForPickup(orderNumber) {
-    const orders = getOrders();
+    const orders = getOrders() || [];
     const orderIndex = orders.findIndex(o => o.numeroPedido === orderNumber);
     if (orderIndex === -1) {
         showNotification('Pedido não encontrado.', 'error');
@@ -284,66 +267,49 @@ function finalizeOrderForPickup(orderNumber) {
 
     orders[orderIndex].status = OrderStatus.READY_FOR_PICKUP;
     saveOrders(orders);
-
     showNotification('Pedido marcado como pronto para retirada!', 'success');
     updateDashboardStats();
     displayBuyerOrders();
     displayWithdrawalOrders();
 }
 
+// Abre o modal para notificar o requisitante
 function openNotifyRequesterModal(orderNumber) {
     const modal = document.getElementById('notify-requester-modal');
-    modal.dataset.orderNumber = orderNumber;
-    modal.classList.remove('hidden');
+    if (modal) {
+        modal.dataset.orderNumber = orderNumber;
+        modal.classList.remove('hidden');
+    }
 }
 
-document.getElementById('send-requester-notification').addEventListener('click', () => {
-    const modal = document.getElementById('notify-requester-modal');
-    const requesterNameInput = document.getElementById('requester-name');
-    const requesterName = requesterNameInput.value.trim();
-    if (!requesterName) {
-        showNotification('Por favor, insira o nome do requisitante.', 'error');
-        return;
-    }
-    showNotification(`Notificação enviada ao requisitante ${requesterName}!`, 'success');
-    requesterNameInput.value = '';
-    closeModal();
-});
-
+// Exibe pedidos na seção de recebimento
 export function displayReceiverOrders() {
-    const receiverOrdersContainer = document.getElementById('receiver-orders-container');
-    if (!receiverOrdersContainer) return;
+    const container = document.getElementById('receiver-orders-container');
+    if (!container) return;
 
-    receiverOrdersContainer.innerHTML = '';
+    container.innerHTML = '';
 
     const searchInput = document.getElementById('receiver-search');
     const pendingFilter = document.getElementById('receiver-pending-filter');
-
     if (!searchInput || !pendingFilter) return;
 
+    let orders = getOrders() || [];
     const searchValue = searchInput.value;
     const selectedStatus = pendingFilter.value;
-    let orders = getOrders();
 
     if (selectedStatus !== 'all') {
         orders = orders.filter(order => order.status === selectedStatus);
     }
 
     const filteredOrders = orders.filter(order => orderMatchesSearch(order, searchValue));
-
     if (filteredOrders.length === 0) {
-        receiverOrdersContainer.innerHTML = '<p>Nenhum pedido pendente encontrado.</p>';
+        container.innerHTML = '<p>Nenhum pedido pendente encontrado.</p>';
         return;
     }
 
-    filteredOrders.sort((a, b) => {
-        const dateA = parseDate(a.sendDate);
-        const dateB = parseDate(b.sendDate);
-        return dateB - dateA;
-    });
+    filteredOrders.sort((a, b) => parseDate(b.sendDate) - parseDate(a.sendDate));
 
     const currentUser = getCurrentUser();
-
     filteredOrders.forEach(order => {
         const orderCard = document.createElement('div');
         orderCard.className = 'order-card';
@@ -351,7 +317,7 @@ export function displayReceiverOrders() {
             <h3>Pedido Nº ${order.numeroPedido}</h3>
             <div class="order-details">
                 <p><strong>Fornecedor:</strong> ${order.nomeFornecedor}</p>
-                <p><strong>CNPJ:</strong> ${order.cnpjFornecedor}</p>
+                <p><strong>CNPJ:</strong> ${formatCNPJ(order.cnpjFornecedor)}</p>
                 <p><strong>Área Destinada:</strong> ${order.area || 'Não definida'}</p>
                 <p><strong>Enviado Por:</strong> ${order.senderName} em ${order.sendDate}</p>
                 ${order.receiveDate ? `<p><strong>Recebido Por:</strong> ${order.receiverName} em ${order.receiveDate}</p>` : ''}
@@ -364,67 +330,60 @@ export function displayReceiverOrders() {
             </div>
             <div class="order-actions">
                 ${
-                    currentUser && (currentUser.role === 'user' || currentUser.role === 'recebimento')
-                    && order.status === OrderStatus.PENDING
-                    ? `<button class="action-btn conferir-btn"><i data-feather="check-circle"></i> Conferir</button>` 
+                    currentUser && (currentUser.role === 'user' || currentUser.role === 'recebimento') &&
+                    order.status === OrderStatus.PENDING
+                    ? `<button class="action-btn conferir-btn"><i data-feather="check-circle"></i> Conferir</button>`
                     : ''
                 }
             </div>
         `;
 
-        receiverOrdersContainer.appendChild(orderCard);
+        container.appendChild(orderCard);
         const conferirBtn = orderCard.querySelector('.conferir-btn');
         if (conferirBtn) {
-            conferirBtn.addEventListener('click', () => {
-                openConferenceModal(order.numeroPedido);
-            });
+            conferirBtn.addEventListener('click', () => openConferenceModal(order.numeroPedido));
         }
     });
 
     feather.replace();
 }
 
+// Exibe pedidos finalizados
 export function displayFinalizedOrders() {
-    const finalizedOrdersContainer = document.getElementById('finalized-orders-container');
-    if (!finalizedOrdersContainer) return;
+    const container = document.getElementById('finalized-orders-container');
+    if (!container) return;
 
-    finalizedOrdersContainer.innerHTML = '';
+    container.innerHTML = '';
 
     const searchInput = document.getElementById('finalized-search');
     const statusFilter = document.getElementById('finalized-status-filter');
-
     if (!searchInput || !statusFilter) return;
+
+    let orders = (getOrders() || []).filter(order =>
+        [OrderStatus.COMPLETED, OrderStatus.WITH_OBSERVATIONS, OrderStatus.RETURNED].includes(order.status)
+    );
 
     const searchValue = searchInput.value;
     const selectedStatus = statusFilter.value;
-
-    let orders = getOrders().filter(order => 
-        [OrderStatus.COMPLETED, OrderStatus.WITH_OBSERVATIONS, OrderStatus.RETURNED].includes(order.status)
-    );
 
     if (selectedStatus !== 'all') {
         orders = orders.filter(order => order.status === selectedStatus);
     }
 
     const filteredOrders = orders.filter(order => orderMatchesSearch(order, searchValue));
-
     if (filteredOrders.length === 0) {
-        finalizedOrdersContainer.innerHTML = '<p>Nenhum pedido finalizado encontrado.</p>';
+        container.innerHTML = '<p>Nenhum pedido finalizado encontrado.</p>';
         return;
     }
 
-    filteredOrders.sort((a, b) => {
-        const dateA = parseDate(a.sendDate);
-        const dateB = parseDate(b.sendDate);
-        return dateB - dateA;
-    });
+    filteredOrders.sort((a, b) => parseDate(b.sendDate) - parseDate(a.sendDate));
 
     filteredOrders.forEach(order => {
         const itens = Array.isArray(order.itens) ? order.itens : [];
         const totalValue = itens.reduce((acc, item) => {
-            const q = (typeof item.quantity === 'number') ? item.quantity : 0;
-            const p = (typeof item.unitPrice === 'number') ? item.unitPrice : 0;
-            return acc + (q * p);
+            const qty = Number(item.quantity) || 0;
+            const price = Number(item.unitPrice) || 0;
+            return acc + (qty * price);
         }, 0).toFixed(2);
 
         const orderCard = document.createElement('div');
@@ -433,7 +392,7 @@ export function displayFinalizedOrders() {
             <h3>Pedido Nº ${order.numeroPedido}</h3>
             <div class="order-details">
                 <p><strong>Fornecedor:</strong> ${order.nomeFornecedor}</p>
-                <p><strong>CNPJ:</strong> ${order.cnpjFornecedor}</p>
+                <p><strong>CNPJ:</strong> ${formatCNPJ(order.cnpjFornecedor)}</p>
                 <p><strong>Área Destinada:</strong> ${order.area || 'Não definida'}</p>
                 <p><strong>Enviado Por:</strong> ${order.senderName} em ${order.sendDate}</p>
                 ${order.receiveDate ? `<p><strong>Recebido Por:</strong> ${order.receiverName} em ${order.receiveDate}</p>` : ''}
@@ -465,20 +424,20 @@ export function displayFinalizedOrders() {
                     </thead>
                     <tbody>
                         ${itens.map(item => {
-                            const qty = (typeof item.quantity === 'number') ? item.quantity : 0;
-                            const uPrice = (typeof item.unitPrice === 'number') ? item.unitPrice : 0;
+                            const qty = Number(item.quantity) || 0;
+                            const uPrice = Number(item.unitPrice) || 0;
                             const tPrice = (qty * uPrice).toFixed(2);
                             return `
-                            <tr>
-                                <td>${item.lineNumber || '-'}</td>
-                                <td>${item.code || '-'}</td>
-                                <td>${item.description || '-'}</td>
-                                <td>${qty}</td>
-                                <td>${item.unit || '-'}</td>
-                                <td>R$ ${!isNaN(uPrice) ? uPrice.toFixed(2) : '0.00'}</td>
-                                <td>R$ ${!isNaN(qty) && !isNaN(uPrice) ? tPrice : '0.00'}</td>
-                                <td>${item.observation || '-'}</td>
-                            </tr>`;
+                                <tr>
+                                    <td>${item.lineNumber || '-'}</td>
+                                    <td>${item.code || '-'}</td>
+                                    <td>${item.description || '-'}</td>
+                                    <td>${qty}</td>
+                                    <td>${item.unit || '-'}</td>
+                                    <td>R$ ${uPrice.toFixed(2)}</td>
+                                    <td>R$ ${tPrice}</td>
+                                    <td>${item.observation || '-'}</td>
+                                </tr>`;
                         }).join('')}
                         <tr class="total-row">
                             <td colspan="6"><strong>Total:</strong></td>
@@ -489,9 +448,8 @@ export function displayFinalizedOrders() {
             </div>
         `;
 
-        finalizedOrdersContainer.appendChild(orderCard);
-        const visualizarBtn = orderCard.querySelector('.visualizar-itens-btn');
-        visualizarBtn.addEventListener('click', () => {
+        container.appendChild(orderCard);
+        orderCard.querySelector('.visualizar-itens-btn').addEventListener('click', () => {
             const itemsList = orderCard.querySelector('.items-list');
             itemsList.style.display = itemsList.style.display === 'none' ? 'block' : 'none';
         });
@@ -500,31 +458,26 @@ export function displayFinalizedOrders() {
     feather.replace();
 }
 
+// Exibe pedidos prontos para retirada
 export function displayWithdrawalOrders() {
-    const withdrawalOrdersContainer = document.getElementById('withdrawal-orders-container');
-    if (!withdrawalOrdersContainer) return;
+    const container = document.getElementById('withdrawal-orders-container');
+    if (!container) return;
 
-    withdrawalOrdersContainer.innerHTML = '';
+    container.innerHTML = '';
 
     const searchInput = document.getElementById('withdrawal-search');
-
     if (!searchInput) return;
 
+    let orders = (getOrders() || []).filter(order => order.status === OrderStatus.READY_FOR_PICKUP);
     const searchValue = searchInput.value;
-    let orders = getOrders().filter(order => order.status === OrderStatus.READY_FOR_PICKUP);
 
     const filteredOrders = orders.filter(order => orderMatchesSearch(order, searchValue));
-
     if (filteredOrders.length === 0) {
-        withdrawalOrdersContainer.innerHTML = '<p>Nenhum pedido para retirada encontrado.</p>';
+        container.innerHTML = '<p>Nenhum pedido para retirada encontrado.</p>';
         return;
     }
 
-    filteredOrders.sort((a, b) => {
-        const dateA = parseDate(a.sendDate);
-        const dateB = parseDate(b.sendDate);
-        return dateB - dateA;
-    });
+    filteredOrders.sort((a, b) => parseDate(b.sendDate) - parseDate(a.sendDate));
 
     filteredOrders.forEach(order => {
         const orderCard = document.createElement('div');
@@ -533,7 +486,7 @@ export function displayWithdrawalOrders() {
             <h3>Pedido Nº ${order.numeroPedido}</h3>
             <div class="order-details">
                 <p><strong>Fornecedor:</strong> ${order.nomeFornecedor}</p>
-                <p><strong>CNPJ:</strong> ${order.cnpjFornecedor}</p>
+                <p><strong>CNPJ:</strong> ${formatCNPJ(order.cnpjFornecedor)}</p>
                 <p><strong>Área Destinada:</strong> ${order.area || 'Não definida'}</p>
                 <p><strong>Enviado Por:</strong> ${order.senderName} em ${order.sendDate}</p>
                 ${order.receiveDate ? `<p><strong>Recebido Por:</strong> ${order.receiverName} em ${order.receiveDate}</p>` : ''}
@@ -548,9 +501,8 @@ export function displayWithdrawalOrders() {
             </div>
         `;
 
-        withdrawalOrdersContainer.appendChild(orderCard);
-        const retirarBtn = orderCard.querySelector('.retirar-btn');
-        retirarBtn.addEventListener('click', () => {
+        container.appendChild(orderCard);
+        orderCard.querySelector('.retirar-btn').addEventListener('click', () => {
             openWithdrawalModal(order.numeroPedido);
         });
     });
@@ -558,11 +510,12 @@ export function displayWithdrawalOrders() {
     feather.replace();
 }
 
+// Abre o modal de conferência de pedido
 function openConferenceModal(orderNumber) {
     const modal = document.getElementById('modal');
     if (!modal) return;
 
-    const order = getOrders().find(o => o.numeroPedido === orderNumber);
+    const order = getOrders()?.find(o => o.numeroPedido === orderNumber);
     if (!order) {
         showNotification('Pedido não encontrado.', 'error');
         return;
@@ -570,7 +523,7 @@ function openConferenceModal(orderNumber) {
 
     document.getElementById('modal-order-number').innerText = order.numeroPedido;
     document.getElementById('modal-supplier-name').innerText = order.nomeFornecedor;
-    document.getElementById('modal-supplier-cnpj').innerText = order.cnpjFornecedor;
+    document.getElementById('modal-supplier-cnpj').innerText = formatCNPJ(order.cnpjFornecedor);
     document.getElementById('modal-sender-name').innerText = order.senderName;
     document.getElementById('modal-send-date').innerText = order.sendDate;
 
@@ -579,74 +532,81 @@ function openConferenceModal(orderNumber) {
     const itens = Array.isArray(order.itens) ? order.itens : [];
 
     itens.forEach(item => {
+        const qty = Number(item.quantity) || 0;
+        const uPrice = Number(item.unitPrice) || 0;
         const row = document.createElement('tr');
-        const qty = (typeof item.quantity === 'number') ? item.quantity : 0;
         row.innerHTML = `
-            <td>${item.lineNumber}</td>
-            <td>${item.code}</td>
-            <td>${item.description}</td>
+            <td>${item.lineNumber || '-'}</td>
+            <td>${item.code || '-'}</td>
+            <td>${item.description || '-'}</td>
             <td>${qty}</td>
-            <td>${item.unit}</td>
-            <td>R$ ${item.unitPrice && !isNaN(item.unitPrice) ? item.unitPrice.toFixed(2) : '0.00'}</td>
-            <td>R$ ${(qty * (item.unitPrice || 0)).toFixed(2)}</td>
+            <td>${item.unit || '-'}</td>
+            <td>R$ ${uPrice.toFixed(2)}</td>
+            <td>R$ ${(qty * uPrice).toFixed(2)}</td>
         `;
         itemsTableBody.appendChild(row);
     });
 
     document.getElementById('global-observation').value = order.globalObservation || '';
-
     modal.dataset.orderNumber = order.numeroPedido;
     modal.classList.remove('hidden');
-
     feather.replace();
 }
 
+// Abre o modal de retirada
 function openWithdrawalModal(orderNumber) {
-    const withdrawalModal = document.getElementById('withdrawal-modal');
-    if (!withdrawalModal) return;
+    const modal = document.getElementById('withdrawal-modal');
+    if (!modal) return;
 
-    withdrawalModal.dataset.orderNumber = orderNumber;
-    withdrawalModal.classList.remove('hidden');
+    modal.dataset.orderNumber = orderNumber;
+    modal.classList.remove('hidden');
     updateWithdrawerSuggestions('');
 }
 
+// Atualiza sugestões de nomes de retirantes
 function updateWithdrawerSuggestions(query) {
     const suggestionsList = document.getElementById('withdrawer-suggestions');
+    if (!suggestionsList) return;
+
     suggestionsList.innerHTML = '';
     if (!query) return;
-    const allWithdrawers = getWithdrawers();
-    const filtered = allWithdrawers.filter(w => w.includes(query));
-    if (filtered.length > 0) {
-        filtered.forEach(name => {
-            const li = document.createElement('li');
-            li.textContent = name;
-            li.addEventListener('click', () => {
-                const input = document.getElementById('withdrawer-name');
-                input.value = name;
-                suggestionsList.innerHTML = '';
-            });
-            suggestionsList.appendChild(li);
+
+    const allWithdrawers = getWithdrawers() || [];
+    const filtered = allWithdrawers.filter(w => w.toLowerCase().includes(query.toLowerCase()));
+    filtered.forEach(name => {
+        const li = document.createElement('li');
+        li.textContent = name;
+        li.addEventListener('click', () => {
+            const input = document.getElementById('withdrawer-name');
+            input.value = name;
+            suggestionsList.innerHTML = '';
         });
-    }
+        suggestionsList.appendChild(li);
+    });
 }
 
-document.getElementById('select-area-form').addEventListener('submit', (e) => {
+// Manipula a submissão do formulário de seleção de área
+document.getElementById('select-area-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const areaSelect = document.getElementById('area-select');
-    let selectedArea = areaSelect.value;
+    const newAreaInput = document.getElementById('new-area');
+    let selectedArea = areaSelect?.value;
+
     if (!selectedArea) {
         showNotification('Por favor, selecione uma área.', 'error');
         return;
     }
+
     if (selectedArea === 'Outra') {
-        const newAreaInput = document.getElementById('new-area');
-        selectedArea = newAreaInput.value.trim().toUpperCase();
+        selectedArea = newAreaInput?.value.trim().toUpperCase();
         if (!selectedArea) {
             showNotification('Por favor, insira a nova área.', 'error');
+            newAreaInput.focus();
             return;
         }
         if (AREAS.includes(selectedArea)) {
             showNotification('Área já existe.', 'error');
+            newAreaInput.focus();
             return;
         }
         AREAS.push(selectedArea);
@@ -663,7 +623,7 @@ document.getElementById('select-area-form').addEventListener('submit', (e) => {
     tempOrder.area = selectedArea;
     tempOrder.status = OrderStatus.PENDING;
 
-    const orders = getOrders();
+    const orders = getOrders() || [];
     orders.push(tempOrder);
     saveOrders(orders);
     showNotification('Pedido processado e salvo com sucesso!', 'success');
@@ -676,32 +636,41 @@ document.getElementById('select-area-form').addEventListener('submit', (e) => {
     displayWithdrawalOrders();
 });
 
-document.getElementById('save-conference-btn').addEventListener('click', () => {
+// Manipula o botão de salvar conferência
+document.getElementById('save-conference-btn')?.addEventListener('click', () => {
     const confirmationModal = document.getElementById('confirmation-modal');
-    confirmationModal.classList.remove('hidden');
     const modal = document.getElementById('modal');
-    confirmationModal.dataset.orderNumber = modal.dataset.orderNumber;
+    if (confirmationModal && modal) {
+        confirmationModal.dataset.orderNumber = modal.dataset.orderNumber;
+        confirmationModal.classList.remove('hidden');
+    }
 });
 
-document.getElementById('cancel-save-conference').addEventListener('click', () => {
+// Cancela a conferência
+document.getElementById('cancel-save-conference')?.addEventListener('click', () => {
     const confirmationModal = document.getElementById('confirmation-modal');
-    confirmationModal.classList.add('hidden');
+    if (confirmationModal) {
+        confirmationModal.classList.add('hidden');
+    }
 });
 
-document.getElementById('confirm-save-conference').addEventListener('click', () => {
+// Confirma a conferência
+document.getElementById('confirm-save-conference')?.addEventListener('click', () => {
     const confirmationModal = document.getElementById('confirmation-modal');
-    const orderNumber = confirmationModal.dataset.orderNumber;
-    finalizeConference(orderNumber);
-    confirmationModal.classList.add('hidden');
+    if (confirmationModal) {
+        finalizeConference(confirmationModal.dataset.orderNumber);
+        confirmationModal.classList.add('hidden');
+    }
 });
 
+// Finaliza a conferência de um pedido
 function finalizeConference(orderNumber) {
     showLoader();
-    const nfFile = document.getElementById('nf-upload').files[0];
-    const boletoFile = document.getElementById('boleto-upload').files[0];
+    const nfFile = document.getElementById('nf-upload')?.files[0];
+    const boletoFile = document.getElementById('boleto-upload')?.files[0];
     const globalObservationInput = document.getElementById('global-observation');
 
-    const orders = getOrders();
+    const orders = getOrders() || [];
     const orderIndex = orders.findIndex(o => o.numeroPedido === orderNumber);
     if (orderIndex === -1) {
         hideLoader();
@@ -709,28 +678,21 @@ function finalizeConference(orderNumber) {
         return;
     }
 
-    orders[orderIndex].globalObservation = globalObservationInput.value.trim();
-
-    orders[orderIndex].receiverName = getCurrentUser().name;
+    orders[orderIndex].globalObservation = globalObservationInput?.value.trim() || '';
+    orders[orderIndex].receiverName = getCurrentUser()?.name || '';
     orders[orderIndex].receiveDate = getCurrentDate();
-
     orders[orderIndex].status = determineOrderStatus(orders[orderIndex]);
 
-    function handleFileUpload(file, key) {
+    async function handleFileUpload(file, key) {
+        if (!file) return;
         return new Promise((resolve, reject) => {
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function (e) {
-                    orders[orderIndex][key] = e.target.result;
-                    resolve();
-                };
-                reader.onerror = function (error) {
-                    reject(error);
-                };
-                reader.readAsDataURL(file);
-            } else {
+            const reader = new FileReader();
+            reader.onload = e => {
+                orders[orderIndex][key] = e.target.result;
                 resolve();
-            }
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
         });
     }
 
@@ -738,33 +700,35 @@ function finalizeConference(orderNumber) {
         handleFileUpload(nfFile, 'nfFile'),
         handleFileUpload(boletoFile, 'boletoFile')
     ])
-    .then(() => {
-        saveOrders(orders);
-        hideLoader();
-        showNotification('Conferência salva com sucesso!', 'success');
-        closeModal();
-        updateDashboardStats();
-        displayReceiverOrders();
-        displayFinalizedOrders();
-        displayBuyerOrders();
-    })
-    .catch(() => {
-        hideLoader();
-        showNotification('Erro ao processar arquivos.', 'error');
-    });
+        .then(() => {
+            saveOrders(orders);
+            hideLoader();
+            showNotification('Conferência salva com sucesso!', 'success');
+            closeModal();
+            updateDashboardStats();
+            displayReceiverOrders();
+            displayFinalizedOrders();
+            displayBuyerOrders();
+        })
+        .catch(() => {
+            hideLoader();
+            showNotification('Erro ao processar arquivos.', 'error');
+        });
 }
 
-document.getElementById('confirm-withdrawal-btn').addEventListener('click', () => {
-    const withdrawalModal = document.getElementById('withdrawal-modal');
-    const orderNumber = withdrawalModal.dataset.orderNumber;
+// Confirma a retirada de um pedido
+document.getElementById('confirm-withdrawal-btn')?.addEventListener('click', () => {
+    const modal = document.getElementById('withdrawal-modal');
+    const orderNumber = modal?.dataset.orderNumber;
     const withdrawerNameInput = document.getElementById('withdrawer-name');
-    const withdrawerName = withdrawerNameInput.value.trim().toUpperCase();
+    const withdrawerName = withdrawerNameInput?.value.trim().toUpperCase();
+
     if (!withdrawerName) {
         showNotification('Por favor, insira o nome do retirante.', 'error');
         return;
     }
 
-    const orders = getOrders();
+    const orders = getOrders() || [];
     const orderIndex = orders.findIndex(o => o.numeroPedido === orderNumber);
     if (orderIndex === -1) {
         showNotification('Pedido não encontrado.', 'error');
@@ -776,14 +740,14 @@ document.getElementById('confirm-withdrawal-btn').addEventListener('click', () =
     orders[orderIndex].status = OrderStatus.COMPLETED;
     saveOrders(orders);
 
-    const existingWithdrawers = getWithdrawers();
+    const existingWithdrawers = getWithdrawers() || [];
     if (!existingWithdrawers.includes(withdrawerName)) {
         existingWithdrawers.push(withdrawerName);
         saveWithdrawers(existingWithdrawers);
     }
 
     showNotification('Retirada confirmada e pedido concluído!', 'success');
-    withdrawalModal.classList.add('hidden');
+    if (modal) modal.classList.add('hidden');
     updateDashboardStats();
     displayWithdrawalOrders();
     displayFinalizedOrders();
@@ -791,34 +755,90 @@ document.getElementById('confirm-withdrawal-btn').addEventListener('click', () =
     displayBuyerOrders();
 });
 
+// Manipula a notificação ao requisitante
+document.getElementById('send-requester-notification')?.addEventListener('click', () => {
+    const modal = document.getElementById('notify-requester-modal');
+    const requesterNameInput = document.getElementById('requester-name');
+    const requesterName = requesterNameInput?.value.trim();
+
+    if (!requesterName) {
+        showNotification('Por favor, insira o nome do requisitante.', 'error');
+        return;
+    }
+
+    showNotification(`Notificação enviada ao requisitante ${requesterName}!`, 'success');
+    requesterNameInput.value = '';
+    closeModal();
+});
+
+// Define a seção ativa
 export function setActiveSection(sectionId) {
-    const sections = document.querySelectorAll('main .sections-wrapper section');
-    sections.forEach(section => {
-        if (section.id === sectionId) {
-            section.classList.remove('hidden-section');
-            section.classList.add('active-section');
-        } else {
-            section.classList.add('hidden-section');
-            section.classList.remove('active-section');
-        }
+    document.querySelectorAll('main .sections-wrapper section').forEach(section => {
+        section.classList.toggle('hidden-section', section.id !== sectionId);
+        section.classList.toggle('active-section', section.id === sectionId);
     });
 }
 
+// Define o item de navegação ativo
 export function setActiveNav(btnId) {
-    const navItems = document.querySelectorAll('.nav-item');
-    navItems.forEach(item => {
+    document.querySelectorAll('.nav-item').forEach(item => {
         const button = item.querySelector('.nav-btn');
-        if (button && button.id === btnId) {
-            item.classList.add('active');
-        } else {
-            item.classList.remove('active');
-        }
+        item.classList.toggle('active', button && button.id === btnId);
     });
 }
 
+// Exibe o modal de login
 export function showLoginModal() {
     const loginModal = document.getElementById('login-modal');
-    if (loginModal) {
-        loginModal.classList.remove('hidden');
+    if (loginModal) loginModal.classList.remove('hidden');
+}
+
+// Abre o modal de seleção de área
+export function openSelectAreaModal(order) {
+    const modal = document.getElementById('select-area-modal');
+    if (!modal) {
+        console.error('Modal "select-area-modal" não encontrado.');
+        return;
     }
+
+    const areaSelect = document.getElementById('area-select');
+    if (!areaSelect) {
+        console.error('Elemento "area-select" não encontrado.');
+        return;
+    }
+
+    // Limpa e preenche o dropdown de áreas
+    areaSelect.innerHTML = '<option value="">Selecione uma área</option>';
+    AREAS.forEach(area => {
+        const option = document.createElement('option');
+        option.value = area;
+        option.textContent = area;
+        areaSelect.appendChild(option);
+    });
+    const otherOption = document.createElement('option');
+    otherOption.value = 'Outra';
+    otherOption.textContent = 'Outra';
+    areaSelect.appendChild(otherOption);
+
+    // Garante que o campo de nova área seja exibido quando "Outra" for selecionada
+    const newAreaDiv = document.getElementById('new-area-group');
+    const newAreaInput = document.getElementById('new-area');
+    if (!newAreaDiv || !newAreaInput) {
+        console.error('Elementos "new-area-group" ou "new-area" não encontrados.');
+        return;
+    }
+
+    // Limpa o campo de nova área e ajusta a visibilidade inicial
+    newAreaInput.value = '';
+    newAreaDiv.classList.toggle('hidden', areaSelect.value !== 'Outra');
+
+    // Adiciona evento de mudança para exibir/esconder o campo de nova área
+    areaSelect.addEventListener('change', () => {
+        newAreaDiv.classList.toggle('hidden', areaSelect.value !== 'Outra');
+        if (areaSelect.value !== 'Outra') {
+            newAreaInput.value = ''; // Limpa o campo ao mudar a seleção
+        }
+    });
+
+    modal.classList.remove('hidden');
 }
