@@ -2,16 +2,30 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema de Controle de Pedidos - Senac</title>
-  <link rel="stylesheet" href="css/styles.css">
-  <link 
-    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" 
-    rel="stylesheet">
+  <link rel="stylesheet" href="css/main.css">  
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <!-- Usando CDN para o Feather Icons -->
   <script src="https://unpkg.com/feather-icons"></script>
+  <!-- Script independente para garantir que o loader será ocultado -->
+  <script>
+    // Script super simples para garantir que o loader será sempre ocultado
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        var loader = document.getElementById('loader');
+        if (loader) {
+          loader.classList.add('hidden');
+          console.log("Loader ocultado pelo script de segurança no head");
+        }
+      }, 1500);
+    });
+  </script>
 </head>
 <body>
   <!-- Modal de Login -->
-  <div id="login-modal" class="modal">
+  <div id="login-modal" class="modal hidden">
     <div class="modal-content-login">
       <span class="close-btn" id="close-login-modal"><i data-feather="x"></i></span>
       <h2>Login</h2>
@@ -59,7 +73,7 @@
     <div class="modal-content area-modal-content">
       <span class="close-btn" id="close-select-area-modal"><i data-feather="x"></i></span>
       <h2>Selecionar Área Destinada</h2>
-      <form id="select-area-form">
+      <form id="select-area-form" onsubmit="return false;">
         <div class="form-group">
           <label for="area-search">Buscar Área:</label>
           <input type="text" id="area-search" placeholder="Pesquisar áreas...">
@@ -74,21 +88,21 @@
           <label for="new-area">Outra Área:</label>
           <input type="text" id="new-area" placeholder="Digite a nova área">
         </div>
-        <button type="submit" class="action-btn">Confirmar</button>
+        <button type="submit" class="action-btn" id="confirm-area-btn">Confirmar</button>
       </form>
     </div>
   </div>
 
   <!-- Modal de Conferência de Pedido -->
-  <div id="modal" class="modal hidden">
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-order-number">
     <div class="modal-content">
         <span class="close-btn"><i data-feather="x"></i></span>
         <h2>Conferência do Pedido</h2>
         
         <!-- Botões de ação no topo do modal -->
         <div class="modal-actions">
-            <button id="print-order-btn" class="action-btn primary-action"><i data-feather="printer"></i> Imprimir Pedido</button>
-            <button id="save-conference-btn" class="action-btn primary-action"><i data-feather="save"></i> Salvar Conferência</button>
+            <button id="print-order-btn" class="action-btn primary-action" aria-label="Imprimir Pedido"><i data-feather="printer"></i> Imprimir Pedido</button>
+            <button id="save-conference-btn" class="action-btn primary-action" aria-label="Salvar Conferência"><i data-feather="save"></i> Salvar Conferência</button>
         </div>
         
         <p><strong>Número do Pedido:</strong> <span id="modal-order-number"></span></p>
@@ -138,14 +152,14 @@
   </div>
 
   <!-- Modal de Confirmação da Conferência -->
-  <div id="confirmation-modal" class="modal hidden">
+  <div id="confirmation-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-save-conference">
     <div class="modal-content">
       <span class="close-btn"><i data-feather="x"></i></span>
       <h2>Confirmar Ação</h2>
       <p>Tem certeza que deseja salvar a conferência? Esta ação não pode ser desfeita.</p>
       <div class="modal-actions">
-        <button id="confirm-save-conference" class="action-btn primary-action">Confirmar</button>
-        <button id="cancel-save-conference" class="action-btn">Cancelar</button>
+        <button id="confirm-save-conference" class="action-btn primary-action" aria-label="Confirmar salvar conferência">Confirmar</button>
+        <button id="cancel-save-conference" class="action-btn" aria-label="Cancelar salvar conferência">Cancelar</button>
       </div>
     </div>
   </div>
@@ -198,7 +212,7 @@
   </div>
 
   <!-- Loader -->
-  <div id="loader" class="loader hidden">
+  <div id="loader" class="loader">
     <div class="spinner"></div>
   </div>
   
@@ -324,13 +338,23 @@
             </div>
             <div class="upload-section">
               <div class="upload-wrapper">
-                <input type="file" id="pdf-upload" accept="application/pdf" aria-label="Selecionar arquivo PDF">
-                <button id="process-pdf" class="action-btn">
-                  <i data-feather="upload"></i> Processar PDF
-                </button>
+                <div class="file-input-group">
+                  <label for="pdf-upload" class="file-input-label">
+                    <i data-feather="upload"></i>
+                    <span>Escolher arquivo</span>
+                  </label>
+                  <input type="file" id="pdf-upload" accept="application/pdf" aria-label="Selecionar arquivo PDF">
+                  <span id="selected-file-name" class="selected-file-name">Nenhum arquivo selecionado</span>
+                </div>
+                <div class="upload-actions">
+                  <button id="process-pdf" class="action-btn" disabled>
+                    Processar PDF
+                  </button>
+                </div>
               </div>
               <p class="info-text">
-                Selecione um arquivo PDF contendo o pedido de compra para processar.
+                <i data-feather="info"></i>
+                Selecione um arquivo PDF do pedido de compra para processamento automático.
               </p>
             </div>
             <hr>
@@ -444,11 +468,157 @@
       </main>
       
       <!-- Scripts -->
-      <script src="libs/pdfjs/pdf.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      <!-- Usando CDNs para bibliotecas externas -->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+      <script src="js/error-handler.js"></script>
       <script type="module" src="js/app.js"></script>
       <script>
-        feather.replace();
+        document.addEventListener('DOMContentLoaded', function() {
+          console.log("[index.html DOMContentLoaded] Iniciando execução de scripts");
+          
+          // Tentar executar feather.replace() se feather estiver disponível
+          if (typeof feather !== 'undefined') {
+            feather.replace();
+            console.log("[index.html DOMContentLoaded] Feather icons inicializados");
+          } else {
+            console.warn("[index.html DOMContentLoaded] Feather icons não encontrado");
+          }
+          
+          // Esconder o loader imediatamente no DOMContentLoaded
+          const loader = document.getElementById('loader');
+          if (loader) {
+            loader.classList.add('hidden');
+            console.log("[index.html DOMContentLoaded] Loader escondido imediatamente");
+          }
+          
+          // Garantir que o menu lateral funcione
+          const navButtons = document.querySelectorAll('.nav-btn');
+          navButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+              document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+              });
+              this.closest('.nav-item').classList.add('active');
+            });
+          });
+        });
+        
+        // Failsafe adicional para garantir que o loader será escondido após 3 segundos
+        setTimeout(function() {
+          const loader = document.getElementById('loader');
+          if (loader && !loader.classList.contains('hidden')) {
+            loader.classList.add('hidden');
+            console.warn("[index.html] Loader escondido pelo failsafe de 3 segundos");
+          }
+        }, 3000);
+      </script>
+      
+      <!-- Error Catcher -->
+      <div id="error-catcher"></div>
+      <button class="error-toggle" id="error-toggle" title="Mostrar/ocultar erros">!</button>
+      
+      <!-- Theme toggle button -->
+      <button id="theme-toggle" class="theme-toggle" title="Alternar tema" aria-label="Alternar tema claro/escuro">
+        <i data-feather="sun"></i>
+      </button>
+      
+      <script>
+        // Script para alternar tema claro/escuro
+        (function() {
+          const themeToggle = document.getElementById('theme-toggle');
+          if (!themeToggle) return;
+          
+          function applyTheme(theme) {
+            document.body.classList.remove('theme-dark', 'theme-light');
+            document.body.classList.add('theme-' + theme);
+            
+            themeToggle.innerHTML = theme === 'dark' ? 
+              '<i data-feather="sun"></i>' : 
+              '<i data-feather="moon"></i>';
+              
+            // Atualizar os ícones
+            if (window.feather) window.feather.replace();
+          }
+          
+          // Verificar tema salvo ou usar preferência do sistema
+          const savedTheme = localStorage.getItem('theme') || 
+            (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          
+          // Aplicar tema ao carregar
+          applyTheme(savedTheme);
+          
+          // Alternar tema ao clicar no botão
+          themeToggle.addEventListener('click', function() {
+            const currentTheme = document.body.classList.contains('theme-dark') ? 'dark' : 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            localStorage.setItem('theme', newTheme);
+            applyTheme(newTheme);
+          });
+        })();
+        
+        // Script para capturar erros
+        (function() {
+          const errorCatcher = document.getElementById('error-catcher');
+          const errorToggle = document.getElementById('error-toggle');
+          let errorCount = 0;
+          
+          // Inicialmente oculto
+          errorCatcher.style.display = 'none';
+          errorToggle.style.display = 'none';
+          
+          // Toggle para mostrar/ocultar o painel de erros
+          errorToggle.addEventListener('click', function() {
+            if (errorCatcher.style.display === 'none') {
+              errorCatcher.style.display = 'block';
+            } else {
+              errorCatcher.style.display = 'none';
+            }
+          });
+          
+          // Captura erros de console
+          const originalConsoleError = console.error;
+          console.error = function() {
+            errorCount++;
+            const errorArgs = Array.from(arguments);
+            const errorMessage = errorArgs.map(arg => 
+              typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            
+            const errorElement = document.createElement('div');
+            errorElement.textContent = `Erro ${errorCount}: ${errorMessage}`;
+            errorCatcher.appendChild(errorElement);
+            
+            errorToggle.style.display = 'flex';
+            errorToggle.textContent = errorCount;
+            
+            // Chama a função original
+            originalConsoleError.apply(console, arguments);
+          };
+          
+          // Captura erros não tratados
+          window.addEventListener('error', function(event) {
+            errorCount++;
+            const errorElement = document.createElement('div');
+            errorElement.textContent = `Erro ${errorCount}: ${event.message} em ${event.filename}:${event.lineno}`;
+            errorCatcher.appendChild(errorElement);
+            
+            errorToggle.style.display = 'flex';
+            errorToggle.textContent = errorCount;
+          });
+          
+          // Captura promessas rejeitadas não tratadas
+          window.addEventListener('unhandledrejection', function(event) {
+            errorCount++;
+            const errorElement = document.createElement('div');
+            errorElement.textContent = `Erro ${errorCount}: Promessa rejeitada não tratada: ${event.reason}`;
+            errorCatcher.appendChild(errorElement);
+            
+            errorToggle.style.display = 'flex';
+            errorToggle.textContent = errorCount;
+          });
+        })();
       </script>
     </div>
   </div>

@@ -1,0 +1,190 @@
+/* Table Styles */
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Table header */
+thead th {
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  font-weight: 600;
+  text-align: left;
+  padding: var(--spacing-md);
+  border-bottom: 2px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* Table body */
+tbody td {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  transition: background-color var(--transition-fast);
+}
+
+/* Hover effect */
+tbody tr:hover td {
+  background-color: var(--color-surface-hover);
+}
+
+/* Striped rows */
+tbody tr:nth-child(even) {
+  background-color: var(--color-surface);
+}
+
+/* Table variants */
+.table-bordered td,
+.table-bordered th {
+  border: 1px solid var(--color-border);
+}
+
+.table-compact td,
+.table-compact th {
+  padding: var(--spacing-sm);
+}
+
+.table-hover tbody tr:hover {
+  background-color: var(--color-surface-hover);
+}
+
+/* Table with status colors */
+.status-pending td:first-child {
+  border-left: 4px solid var(--color-warning);
+}
+
+.status-received td:first-child {
+  border-left: 4px solid var(--color-success);
+}
+
+.status-with_observations td:first-child {
+  border-left: 4px solid var(--color-error);
+}
+
+.status-completed td:first-child {
+  border-left: 4px solid var(--color-info);
+}
+
+.status-returned td:first-child {
+  border-left: 4px solid var(--color-error);
+}
+
+/* Table actions */
+.table-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+}
+
+/* Table responsive */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Table with fixed header */
+.table-fixed-header {
+  position: relative;
+}
+
+.table-fixed-header thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* Table with fixed first column */
+.table-fixed-first-col th:first-child,
+.table-fixed-first-col td:first-child {
+  position: sticky;
+  left: 0;
+  background-color: var(--color-surface);
+  z-index: 1;
+}
+
+/* Table with selection */
+.table-selectable tbody tr {
+  cursor: pointer;
+}
+
+.table-selectable tbody tr.selected {
+  background-color: var(--color-primary-translucent-10);
+}
+
+/* Table with loading state */
+.table-loading {
+  position: relative;
+}
+
+.table-loading::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-surface-hover),
+    transparent
+  );
+  animation: table-loading 1.5s infinite;
+}
+
+@keyframes table-loading {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Table empty state */
+.table-empty {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-tertiary);
+}
+
+/* Table pagination */
+.table-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.table-pagination-info {
+  color: var(--color-text-secondary);
+}
+
+.table-pagination-controls {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .table-responsive {
+    margin: 0 calc(-1 * var(--spacing-md));
+  }
+
+  .table-pagination {
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  .table-actions {
+    flex-wrap: wrap;
+  }
+} 

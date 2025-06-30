@@ -1,0 +1,79 @@
+:root {
+  /* Typography */
+  --font-family-base: 'Poppins', sans-serif;
+
+  /* Spacing scale */
+  --spacing-xs: 0.25rem; /* 4px */
+  --spacing-sm: 0.5rem;  /* 8px */
+  --spacing-md: 1rem;    /* 16px */
+  --spacing-lg: 1.5rem;  /* 24px */
+  --spacing-xl: 2rem;    /* 32px */
+
+  /* Font sizes */
+  --font-size-xs: 0.75rem;   /* 12px */
+  --font-size-sm: 0.875rem;  /* 14px */
+  --font-size-base: 1rem;    /* 16px */
+  --font-size-lg: 1.125rem;  /* 18px */
+  --font-size-xl: 1.5rem;    /* 24px */
+  --font-size-2xl: 2rem;     /* 32px */
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.15);
+
+  /* Transitions */
+  --transition-fast: 150ms;
+  --transition-normal: 300ms;
+  --transition-slow: 500ms;
+
+  /* Layout */
+  --container-max-width: 1200px;
+  --header-height: 64px;
+  --sidebar-width: 260px;
+
+  /* Z-index scale */
+  --z-index-sticky: 1000;
+  --z-index-fixed: 1050;
+  --z-index-modal-backdrop: 1080;
+  --z-index-modal: 1090;
+  --z-index-tooltip: 1100;
+  --z-index-notification: 1200;
+
+  /* Color Palette – Light (default) */
+  --color-background: #f7f7f7;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f0f0f0;
+  --color-border: #e0e0e0;
+
+  /* Text */
+  --color-text-primary: #212121;
+  --color-text-secondary: #555555;
+  --color-text-tertiary: #888888;
+
+  /* Brand & state colors */
+  --color-primary: #ff7f00; /* Senac orange */
+  --color-primary-dark: #e66f00;
+  --color-primary-light: rgba(255, 127, 0, 0.1);
+  --color-success: #2e8540;
+  --color-success-hover: #276d35;
+  --color-error: #c62828;
+  --color-error-hover: #a51f1f;
+  --color-warning: #f9a825;
+  --color-warning-hover: #d8901f;
+  --color-info: #0277bd;
+  --color-info-hover: #01629a;
+
+  /* Translucent helpers */
+  --color-primary-translucent-10: rgba(255, 127, 0, 0.1);
+  --color-success-translucent-10: rgba(46, 133, 64, 0.1);
+  --color-error-translucent-10: rgba(198, 40, 40, 0.1);
+  --color-warning-translucent-10: rgba(249, 168, 37, 0.1);
+  --color-info-translucent-10: rgba(2, 119, 189, 0.1);
+} 

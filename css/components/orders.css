@@ -1,0 +1,258 @@
+/* Order Card & Related Styles */
+
+.order-card {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: var(--spacing-lg);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  position: relative;
+}
+
+.order-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.order-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.order-card-header h3 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  color: var(--color-text-primary);
+}
+
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-full);
+  font-weight: 500;
+  background-color: var(--color-surface-hover);
+  color: var(--color-text-secondary);
+}
+
+/* Dynamic status colors */
+.status-indicator.status-pending { color: var(--color-warning); }
+.status-indicator.status-received { color: var(--color-info); }
+.status-indicator.status-with_observations { color: var(--color-warning); }
+.status-indicator.status-completed { color: var(--color-success); }
+.status-indicator.status-returned { color: var(--color-error); }
+.status-indicator.status-ready_for_pickup { color: var(--color-primary); }
+
+.order-details p {
+  margin: 0 0 var(--spacing-xs) 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.order-card-footer {
+  margin-top: var(--spacing-md);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  justify-content: space-between;
+  align-items: center;
+}
+
+.order-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+}
+
+/* Items list */
+.items-list {
+  margin-top: var(--spacing-md);
+}
+
+.items-list table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--font-size-xs);
+}
+
+.items-list th,
+.items-list td {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.items-list th {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text-primary);
+  font-weight: 600;
+  text-align: left;
+}
+
+.items-list .total-row td {
+  font-weight: 600;
+  border-bottom: none;
+}
+
+/* Spinner inline for buttons in order card */
+.button-loading {
+  position: relative;
+  color: transparent;
+}
+.button-loading::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin: -8px 0 0 -8px;
+  border: 2px solid;
+  border-radius: 50%;
+  border-color: currentColor transparent transparent;
+  animation: button-loader 0.8s linear infinite;
+}
+
+/* Suggestions dropdown */
+.suggestions-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: none;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: var(--z-index-tooltip);
+  box-shadow: var(--shadow-md);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  list-style: none;
+}
+
+.suggestions-list li {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.suggestions-list li:hover,
+.suggestions-list li.active {
+  background-color: var(--color-surface-hover);
+}
+
+/* Info text */
+.info-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+  margin-top: var(--spacing-sm);
+}
+
+/* Upload section */
+.upload-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  align-items: flex-start;
+}
+
+.upload-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  position: relative;
+}
+
+.upload-wrapper input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Error toggle fab */
+#error-toggle {
+  position: fixed;
+  bottom: var(--spacing-lg);
+  left: var(--spacing-lg);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-error);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: var(--font-size-base);
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  transition: transform var(--transition-fast), background-color var(--transition-fast);
+  z-index: var(--z-index-fixed);
+}
+
+#error-toggle:hover {
+  transform: scale(1.05);
+  background-color: var(--color-error-hover);
+}
+
+/* Theme toggle */
+#theme-toggle {
+  position: fixed;
+  bottom: calc(var(--spacing-lg) + 48px);
+  left: var(--spacing-lg);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  transition: transform var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast);
+  z-index: var(--z-index-fixed);
+}
+
+#theme-toggle:hover {
+  transform: scale(1.05);
+  background-color: var(--color-surface-hover);
+}
+
+/* Adaptive styles for cards grid on mobile */
+@media (max-width: 640px) {
+  .order-card {
+    padding: var(--spacing-md);
+  }
+  .order-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+  }
+  .order-card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+}
+
+/* Empty orders message */
+.no-orders-message {
+  text-align: center;
+  color: var(--color-text-tertiary);
+  padding: var(--spacing-lg);
+  font-style: italic;
+}
+
+/* Global observation display within order card */
+.global-observation-display {
+  font-style: italic;
+  color: var(--color-text-secondary);
+} 

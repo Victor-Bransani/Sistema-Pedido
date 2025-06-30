@@ -1,0 +1,29 @@
+/* Dark Theme Overrides */
+
+body.theme-dark {
+  --color-background: #121212;
+  --color-surface: #1e1e1e;
+  --color-surface-hover: #2a2a2a;
+  --color-border: #333333;
+
+  --color-text-primary: #e0e0e0;
+  --color-text-secondary: #bdbdbd;
+  --color-text-tertiary: #9e9e9e;
+
+  /* State colors slightly tuned for dark */
+  --color-primary: #ff9100;
+  --color-primary-dark: #ff7b00;
+  --color-success: #4caf50;
+  --color-success-hover: #3d8b41;
+  --color-error: #ef5350;
+  --color-error-hover: #d32f2f;
+  --color-warning: #ffb300;
+  --color-warning-hover: #ffa000;
+  --color-info: #29b6f6;
+  --color-info-hover: #039be5;
+
+  /* Shadows adjusted for dark */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.9);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.8);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.7);
+} 

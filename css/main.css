@@ -1,0 +1,30 @@
+/* Main CSS file - Imports all modules */
+
+/* Base styles and variables */
+@import 'base/variables.css';
+@import 'base/reset.css';
+@import 'base/typography.css';
+
+/* Layout components */
+@import 'layout/grid.css';
+@import 'layout/header.css';
+@import 'layout/sidebar.css';
+@import 'layout/main-content.css';
+
+/* Components */
+@import 'components/buttons.css';
+@import 'components/forms.css';
+@import 'components/modals.css';
+@import 'components/cards.css';
+@import 'components/tables.css';
+@import 'components/loader.css';
+@import 'components/notifications.css';
+@import 'components/orders.css';
+
+/* Utilities */
+@import 'utilities/animations.css';
+@import 'utilities/helpers.css';
+
+/* Theme */
+@import 'themes/light.css';
+@import 'themes/dark.css'; 

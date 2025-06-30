@@ -1,0 +1,53 @@
+/* Animation Utilities */
+
+/* Fade animations */
+.fade-in { animation: fade-in var(--transition-normal) ease forwards; }
+.fade-out { animation: fade-out var(--transition-normal) ease forwards; }
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Scale animations */
+.scale-in { animation: scale-in var(--transition-normal) ease forwards; }
+.scale-out { animation: scale-out var(--transition-normal) ease forwards; }
+
+@keyframes scale-in { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes scale-out { from { transform: scale(1); opacity: 1; } to { transform: scale(0.95); opacity: 0; } }
+
+/* Slide animations */
+.slide-in-right { animation: slide-in-right var(--transition-normal) ease forwards; }
+.slide-out-right { animation: slide-out-right var(--transition-normal) ease forwards; }
+.slide-in-left { animation: slide-in-left var(--transition-normal) ease forwards; }
+.slide-out-left { animation: slide-out-left var(--transition-normal) ease forwards; }
+.slide-in-up { animation: slide-in-up var(--transition-normal) ease forwards; }
+.slide-out-down { animation: slide-out-down var(--transition-normal) ease forwards; }
+
+@keyframes slide-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes slide-out-right { from { transform: translateX(0); } to { transform: translateX(100%); } }
+@keyframes slide-in-left { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@keyframes slide-out-left { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+@keyframes slide-in-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes slide-out-down { from { transform: translateY(0); } to { transform: translateY(100%); } }
+
+/* Bounce */
+.bounce { animation: bounce 0.5s ease infinite; }
+@keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+/* Pulse */
+.pulse { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+/* Shake */
+.shake { animation: shake 0.5s ease-in-out; }
+@keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+
+/* Spin */
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } 

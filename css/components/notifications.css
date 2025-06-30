@@ -1,0 +1,188 @@
+/* Notification Styles */
+
+/* Notification container */
+.notifications-container,
+#notification-container {
+  position: fixed;
+  top: var(--spacing-lg);
+  right: var(--spacing-lg);
+  z-index: var(--z-index-notification);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  max-width: 400px;
+  width: 100%;
+}
+
+/* Base notification */
+.notification {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  transform: translateX(120%);
+  animation: slide-in 0.3s ease forwards;
+  position: relative;
+  overflow: hidden;
+}
+
+.notification.closing {
+  animation: slide-out 0.3s ease forwards;
+}
+
+/* Notification icon */
+.notification-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+}
+
+/* Notification content */
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-title {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.notification-message {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+/* Notification close button */
+.notification-close {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+  border-radius: var(--radius-full);
+  transition: all var(--transition-fast);
+}
+
+.notification-close:hover {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+/* Notification variants */
+.notification-success { border-left: 4px solid var(--color-success); }
+.notification-success .notification-icon { background-color: var(--color-success-translucent-10); color: var(--color-success); }
+
+.notification-error { border-left: 4px solid var(--color-error); }
+.notification-error .notification-icon { background-color: var(--color-error-translucent-10); color: var(--color-error); }
+
+.notification-warning { border-left: 4px solid var(--color-warning); }
+.notification-warning .notification-icon { background-color: var(--color-warning-translucent-10); color: var(--color-warning); }
+
+.notification-info { border-left: 4px solid var(--color-info); }
+.notification-info .notification-icon { background-color: var(--color-info-translucent-10); color: var(--color-info); }
+
+/* Progress bar */
+.notification-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background-color: currentColor;
+  opacity: 0.2;
+  animation: progress var(--notification-duration) linear forwards;
+}
+
+/* Toast notification */
+.toast-notification {
+  position: fixed;
+  bottom: var(--spacing-lg);
+  right: var(--spacing-lg);
+  z-index: var(--z-index-notification);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  max-width: 400px;
+  width: 100%;
+}
+
+.toast-notification .notification {
+  transform: translateY(120%);
+  animation: slide-up 0.3s ease forwards;
+}
+
+.toast-notification .notification.closing {
+  animation: slide-down 0.3s ease forwards;
+}
+
+/* Animations */
+@keyframes slide-in {
+  from {
+    transform: translateX(120%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(120%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(120%);
+  }
+}
+
+@keyframes progress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .notifications-container,
+  #notification-container,
+  .toast-notification {
+    left: var(--spacing-md);
+    right: var(--spacing-md);
+    max-width: none;
+  }
+
+  .notification {
+    padding: var(--spacing-sm);
+  }
+} 

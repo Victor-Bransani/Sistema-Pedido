@@ -1,0 +1,186 @@
+/* Button Styles */
+
+/* Base button styles */
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+/* Primary button */
+.action-btn.primary-action {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.action-btn.primary-action:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
+
+.action-btn.primary-action:active {
+  transform: translateY(0);
+}
+
+/* Secondary button */
+.action-btn.secondary-action {
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+.action-btn.secondary-action:hover {
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-text-tertiary);
+}
+
+/* Success button */
+.action-btn.success-action {
+  background-color: var(--color-success);
+  color: white;
+}
+
+.action-btn.success-action:hover {
+  background-color: var(--color-success-hover);
+}
+
+/* Error button */
+.action-btn.error-action {
+  background-color: var(--color-error);
+  color: white;
+}
+
+.action-btn.error-action:hover {
+  background-color: var(--color-error-hover);
+}
+
+/* Warning button */
+.action-btn.warning-action {
+  background-color: var(--color-warning);
+  color: white;
+}
+
+.action-btn.warning-action:hover {
+  background-color: var(--color-warning-hover);
+}
+
+/* Info button */
+.action-btn.info-action {
+  background-color: var(--color-info);
+  color: white;
+}
+
+.action-btn.info-action:hover {
+  background-color: var(--color-info-hover);
+}
+
+/* Disabled state */
+.action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Button sizes */
+.action-btn.sm {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+}
+
+.action-btn.lg {
+  padding: var(--spacing-md) var(--spacing-xl);
+  font-size: var(--font-size-lg);
+}
+
+/* Icon button */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.icon-btn:hover {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.icon-btn.primary {
+  color: var(--color-primary);
+}
+
+.icon-btn.primary:hover {
+  background-color: var(--color-primary-translucent-10);
+}
+
+/* Button group */
+.btn-group {
+  display: inline-flex;
+  gap: var(--spacing-xs);
+}
+
+.btn-group .action-btn {
+  border-radius: 0;
+}
+
+.btn-group .action-btn:first-child {
+  border-top-left-radius: var(--radius-md);
+  border-bottom-left-radius: var(--radius-md);
+}
+
+.btn-group .action-btn:last-child {
+  border-top-right-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+}
+
+/* Loading state */
+.action-btn.loading {
+  position: relative;
+  color: transparent;
+}
+
+.action-btn.loading::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid;
+  border-radius: 50%;
+  border-color: currentColor transparent transparent;
+  animation: button-loading 0.8s linear infinite;
+}
+
+@keyframes button-loading {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .action-btn {
+    width: 100%;
+  }
+
+  .btn-group {
+    width: 100%;
+  }
+
+  .btn-group .action-btn {
+    flex: 1;
+  }
+} 
